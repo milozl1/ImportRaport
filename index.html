@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import Report — Customs Data Consolidation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>" />
+</head>
+<body>
+
+  <!-- ═══ TOPBAR ═══ -->
+  <header class="topbar">
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/><circle cx="12" cy="14" r="1"/></svg>
+      <span class="text-gradient">Import Report</span>
+    </div>
+    <div class="breadcrumb" id="breadcrumb">
+      <span class="active-step" data-step="broker">Broker</span>
+      <span class="sep">›</span>
+      <span data-step="upload">Upload</span>
+      <span class="sep">›</span>
+      <span data-step="result">Result</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="version-badge">v2.0</span>
+  </header>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- ── STEP 1: BROKER SELECTION ── -->
+    <section class="view active" id="view-broker">
+      <h1 class="section-title">Select Broker</h1>
+      <p class="section-subtitle">Choose the customs broker whose files you want to consolidate</p>
+      <div class="broker-grid" id="broker-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ── STEP 2: FILE UPLOAD ── -->
+    <section class="view" id="view-upload">
+      <h1 class="section-title">Upload Files</h1>
+      <p class="section-subtitle">Add one or more monthly report files for the selected broker</p>
+
+      <div class="upload-section">
+        <div class="active-broker-banner" id="active-broker-banner">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div class="drop-zone" id="drop-zone">
+          <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="drop-title">Drop files here or click to browse</div>
+          <div class="drop-hint">Supports .xlsx, .xls, .csv — multiple files allowed</div>
+          <input type="file" id="file-input" accept=".xlsx,.xls,.csv,.tsv" multiple />
+        </div>
+
+        <div class="file-list" id="file-list"></div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" id="btn-back-broker">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Change Broker
+          </button>
+          <button class="btn btn-primary" id="btn-merge" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>
+            Merge &amp; Validate
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── STEP 3: RESULTS ── -->
+    <section class="view" id="view-result">
+      <div class="result-header" id="result-header">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="stats-row" id="stats-row">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="validation-panel" id="validation-panel">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="file-breakdown" id="file-breakdown">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="preview-section" id="preview-section">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="btn-back-upload">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Upload More
+          </button>
+        <button class="btn btn-success" id="btn-download">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Excel
+        </button>
+        <button class="btn btn-secondary" id="btn-new-session">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          New Session
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ LOADING OVERLAY ═══ -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Processing…</div>
+  </div>
+
+  <!-- ═══ TOASTS ═══ -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script type="module" src="/src/js/app.js"></script>
+</body>
+</html>
