@@ -3,7 +3,6 @@
  * Step 1: Select broker → Step 2: Upload files → Step 3: Dashboard
  */
 
-import '../css/styles.css';
 import { BROKERS } from './brokers.js';
 import { mergeFiles, downloadExcel } from './engine.js';
 
