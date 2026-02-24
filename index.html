@@ -6,6 +6,7 @@
   <title>Import Report — Customs Data Consolidation</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>" />
   <link rel="stylesheet" href="src/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -21,6 +22,8 @@
       <span data-step="upload">Upload</span>
       <span class="sep">›</span>
       <span data-step="result">Result</span>
+      <span class="sep">›</span>
+      <span data-step="analytics">Analytics</span>
     </div>
     <div class="spacer"></div>
     <span class="version-badge">v2.0</span>
@@ -79,11 +82,98 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             Upload More
         </button>
+        <button class="btn btn-primary" id="btn-analytics">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          Analytics Dashboard
+        </button>
         <button class="btn btn-success" id="btn-download">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download Excel
         </button>
         <button class="btn btn-secondary" id="btn-new-session">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          New Session
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 4: ANALYTICS DASHBOARD -->
+    <section class="view" id="view-analytics">
+      <div class="analytics-header" id="analytics-header"></div>
+      <div class="analytics-kpis" id="analytics-kpis"></div>
+
+      <div class="analytics-grid">
+        <!-- Row 1: Monthly trends -->
+        <div class="chart-card span-2">
+          <div class="chart-title">Monthly Declarations</div>
+          <div class="chart-body"><canvas id="chart-monthly-declarations"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-title">Monthly Duty &amp; VAT</div>
+          <div class="chart-body"><canvas id="chart-monthly-financials"></canvas></div>
+        </div>
+
+        <!-- Row 2: Country + HS -->
+        <div class="chart-card">
+          <div class="chart-title">Country of Origin</div>
+          <div class="chart-body chart-body-square"><canvas id="chart-countries"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-title">Top HS Code Chapters</div>
+          <div class="chart-body"><canvas id="chart-hs-chapters"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Invoice Currencies</div>
+          <div class="chart-body chart-body-square"><canvas id="chart-currencies"></canvas></div>
+        </div>
+
+        <!-- Row 3: Distribution -->
+        <div class="chart-card">
+          <div class="chart-title">Incoterm Distribution</div>
+          <div class="chart-body"><canvas id="chart-incoterms"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Duty Amount Distribution</div>
+          <div class="chart-body"><canvas id="chart-duty-dist"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Weight Distribution</div>
+          <div class="chart-body chart-body-square"><canvas id="chart-weight-dist"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Procedure Codes</div>
+          <div class="chart-body"><canvas id="chart-procedures"></canvas></div>
+        </div>
+
+        <!-- Row 4: Weight & Freight trends -->
+        <div class="chart-card span-full">
+          <div class="chart-title">Monthly Weight &amp; Freight</div>
+          <div class="chart-body"><canvas id="chart-weight-freight"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Data tables -->
+      <div class="analytics-tables">
+        <div class="analytics-table-section">
+          <h3 class="table-section-title">Country Breakdown</h3>
+          <div id="analytics-country-table"></div>
+        </div>
+        <div class="analytics-table-section">
+          <h3 class="table-section-title">HS Code Analysis</h3>
+          <div id="analytics-hs-table"></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="btn-back-result">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back to Report
+        </button>
+        <button class="btn btn-success" id="btn-download-analytics">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Excel
+        </button>
+        <button class="btn btn-secondary" id="btn-new-session-analytics">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
           New Session
         </button>

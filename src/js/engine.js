@@ -25,6 +25,10 @@ import { validateAndFix, reportSummary } from './validator.js';
  * set and append them at the end.  Synonym mapping (broker.headerSynonyms)
  * is consulted when resolving names.
  *
+ * Columns listed in `broker.airOnlyColumns` are **excluded** from the
+ * unified header and tracked separately so the engine can place them
+ * on Sheet 2 of the final report.
+ *
  * Because some header names are **duplicated** (e.g. "Verfahren" at
  * positions 2 and 84, or "Währung" at 6 different positions), the
  * unified header is treated as an ordered list where the same name
@@ -33,9 +37,12 @@ import { validateAndFix, reportSummary } from './validator.js';
  *
  * @param {Array<{headers: string[][], fileIdx: number}>} fileParts
  * @param {Object} broker
- * @returns {string[]} unified header row
+ * @returns {{ unified: string[], airOnlyHeader: string[] }}
  */
 function buildUnifiedHeader(fileParts, broker) {
+  // Set of header names that must NOT appear on the main sheet.
+  const airOnlySet = new Set((broker.airOnlyColumns || []).map(s => s.trim()));
+
   // Find the widest header row.
   let widest = fileParts[0];
   for (const fp of fileParts) {
@@ -44,12 +51,28 @@ function buildUnifiedHeader(fileParts, broker) {
     }
   }
 
-  // Start with a clone of the widest header.
-  const unified = [...(widest.headers[0] || [])].map(h =>
+  // Start with a clone of the widest header (excluding air-only cols).
+  const raw = [...(widest.headers[0] || [])].map(h =>
     h != null ? String(h).trim() : ''
   );
+  const unified = raw.filter(h => !airOnlySet.has(h));
 
   const synonyms = broker.headerSynonyms || {};
+
+  // Collect air-only columns from all files (preserving order).
+  const airOnlyHeader = [];
+  const airOnlySeen = new Set();
+
+  // Helper: check if a header name is air-only
+  const isAirOnly = (name) => airOnlySet.has(name);
+
+  // Process widest file first for air-only columns
+  for (const h of raw) {
+    if (h && isAirOnly(h) && !airOnlySeen.has(h)) {
+      airOnlyHeader.push(h);
+      airOnlySeen.add(h);
+    }
+  }
 
   // For every other file, check if it has columns NOT in the unified set.
   for (const fp of fileParts) {
@@ -61,6 +84,16 @@ function buildUnifiedHeader(fileParts, broker) {
     for (let i = 0; i < hRow.length; i++) {
       const name = hRow[i];
       if (!name) continue;
+
+      // If this is an air-only column, track it but don't add to unified.
+      if (isAirOnly(name)) {
+        if (!airOnlySeen.has(name)) {
+          airOnlyHeader.push(name);
+          airOnlySeen.add(name);
+        }
+        continue;
+      }
+
       // Resolve through synonyms
       const canonical = synonyms[name] || name;
       // Check if canonical name is already in unified
@@ -72,28 +105,56 @@ function buildUnifiedHeader(fileParts, broker) {
     }
   }
 
-  return unified;
+  return { unified, airOnlyHeader };
 }
 
 /**
  * Build a column mapping from a file's header to the unified header.
  *
- * Returns an array where `mapping[fileColIdx] = unifiedColIdx`.
+ * Returns an object with:
+ *   `mapping`    — array where `mapping[fileColIdx] = unifiedColIdx` (-1 if unmapped)
+ *   `airMapping` — array where `airMapping[fileColIdx] = airOnlyColIdx` (-1 if not air-only)
+ *
  * Handles duplicates by consuming unified positions in order (first
  * available match).
  *
- * @param {string[]} fileHeader  — this file's header row (strings)
- * @param {string[]} unified     — the unified header row
- * @param {Object}   synonyms    — old-name → new-name map
- * @returns {number[]} mapping array
+ * @param {string[]} fileHeader    — this file's header row (strings)
+ * @param {string[]} unified       — the unified header row
+ * @param {Object}   synonyms      — old-name → new-name map
+ * @param {string[]} airOnlyHeader — air-only column names (for Sheet 2)
+ * @returns {{ mapping: number[], airMapping: number[] }}
  */
-function buildColumnMapping(fileHeader, unified, synonyms) {
+function buildColumnMapping(fileHeader, unified, synonyms, airOnlyHeader) {
   const mapping = new Array(fileHeader.length).fill(-1);
+  const airMapping = new Array(fileHeader.length).fill(-1);
   // Track which unified positions have been claimed.
   const used = new Set();
 
+  // Build a quick lookup for air-only header positions
+  const airOnlySet = new Set((airOnlyHeader || []).map(s => s.trim()));
+
+  // Pass 0: map air-only columns first (they are NOT in unified)
+  if (airOnlyHeader && airOnlyHeader.length > 0) {
+    const airUsed = new Set();
+    for (let fi = 0; fi < fileHeader.length; fi++) {
+      const name = fileHeader[fi];
+      if (!name) continue;
+      if (airOnlySet.has(name)) {
+        // Find position in airOnlyHeader
+        for (let ai = 0; ai < airOnlyHeader.length; ai++) {
+          if (!airUsed.has(ai) && airOnlyHeader[ai] === name) {
+            airMapping[fi] = ai;
+            airUsed.add(ai);
+            break;
+          }
+        }
+      }
+    }
+  }
+
   // Pass 1: exact name match (order-preserving for duplicates)
   for (let fi = 0; fi < fileHeader.length; fi++) {
+    if (airMapping[fi] !== -1) continue; // air-only column, skip
     const name = fileHeader[fi];
     if (!name) continue;
     // Find the first unused unified position with the same name
@@ -108,7 +169,7 @@ function buildColumnMapping(fileHeader, unified, synonyms) {
 
   // Pass 2: synonym match for any still-unmapped columns
   for (let fi = 0; fi < fileHeader.length; fi++) {
-    if (mapping[fi] !== -1) continue; // already matched
+    if (mapping[fi] !== -1 || airMapping[fi] !== -1) continue;
     const name = fileHeader[fi];
     if (!name) continue;
     const canonical = synonyms[name];
@@ -122,7 +183,7 @@ function buildColumnMapping(fileHeader, unified, synonyms) {
     }
   }
 
-  return mapping;
+  return { mapping, airMapping };
 }
 
 /**
@@ -144,8 +205,30 @@ function remapRow(row, mapping, width) {
   return out;
 }
 
+/**
+ * Extract air-only column values from a data row.
+ *
+ * @param {Array}    row        — original data row
+ * @param {number[]} airMapping — file-col → air-only-col index array
+ * @param {number}   width      — air-only header width
+ * @returns {Array|null}  air-only row, or null if no air-only data
+ */
+function extractAirOnlyRow(row, airMapping, width) {
+  if (!width) return null;
+  let hasData = false;
+  const out = new Array(width).fill(null);
+  for (let fi = 0; fi < row.length && fi < airMapping.length; fi++) {
+    const ai = airMapping[fi];
+    if (ai >= 0) {
+      out[ai] = row[fi];
+      if (row[fi] != null && row[fi] !== '') hasData = true;
+    }
+  }
+  return hasData ? out : null;
+}
+
 // Export alignment helpers for testing
-export { buildUnifiedHeader, buildColumnMapping, remapRow };
+export { buildUnifiedHeader, buildColumnMapping, remapRow, extractAirOnlyRow };
 
 /**
  * Parse a single file into an array-of-arrays.
@@ -265,20 +348,31 @@ export async function mergeFiles(files, broker, onProgress) {
 
   let headers;
   const allData = [];
+  let airOnlyHeader = [];
+  const airOnlyData = [];
 
   if (needsAlignment && broker.headerSynonyms) {
     // ── Build unified header and remap all data ──
     if (onProgress) onProgress('Aligning columns across files…');
 
-    const unified = buildUnifiedHeader(fileParts, broker);
+    const result = buildUnifiedHeader(fileParts, broker);
+    const unified = result.unified;
+    airOnlyHeader = result.airOnlyHeader;
     headers = [unified];
 
     const synonyms = broker.headerSynonyms || {};
 
     for (const fp of fileParts) {
-      const mapping = buildColumnMapping(fp.hRow, unified, synonyms);
+      const { mapping, airMapping } = buildColumnMapping(
+        fp.hRow, unified, synonyms, airOnlyHeader
+      );
       for (const row of fp.data) {
         allData.push(remapRow(row, mapping, unified.length));
+        // Collect air-only data (if this file has air-only columns)
+        if (airOnlyHeader.length > 0) {
+          const airRow = extractAirOnlyRow(row, airMapping, airOnlyHeader.length);
+          airOnlyData.push(airRow); // null for Sea-only rows
+        }
       }
     }
   } else {
@@ -295,13 +389,28 @@ export async function mergeFiles(files, broker, onProgress) {
   stats.validation = validationReport;
   stats.validationSummary = reportSummary(validationReport);
 
-  return { headers: headers || [], data: allData, stats };
+  // Attach air-only column info so downloadExcel can produce Sheet 2.
+  const airOnly = airOnlyHeader.length > 0
+    ? { headers: airOnlyHeader, data: airOnlyData }
+    : null;
+
+  return { headers: headers || [], data: allData, stats, airOnly };
 }
 
 /**
  * Generate an Excel workbook from merged data and trigger download.
+ *
+ * When `airOnly` is provided (from mergeFiles), a second sheet
+ * "Air-Only Fields" is created with the columns that could not be
+ * mapped to the Sea layout.  A "Row #" column cross-references the
+ * main Consolidated sheet so users can match rows easily.
+ *
+ * @param {Array}  headers   — header rows (array of arrays)
+ * @param {Array}  data      — data rows
+ * @param {string} fileName  — output file name
+ * @param {Object} [airOnly] — { headers: string[], data: (Array|null)[] }
  */
-export function downloadExcel(headers, data, fileName) {
+export function downloadExcel(headers, data, fileName, airOnly) {
   const allRows = [...headers, ...data];
   const ws = XLSX.utils.aoa_to_sheet(allRows);
 
@@ -318,6 +427,41 @@ export function downloadExcel(headers, data, fileName) {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Consolidated');
+
+  // ── Sheet 2: Air-Only Fields ──
+  if (airOnly && airOnly.headers && airOnly.headers.length > 0) {
+    // Check if there is any air-only data at all
+    const hasAnyAirData = airOnly.data.some(r => r != null);
+    if (hasAnyAirData) {
+      // Build air-only sheet with a "Row #" cross-reference column.
+      const airHeader = ['Row #', ...airOnly.headers];
+      const airRows = [airHeader];
+
+      for (let i = 0; i < airOnly.data.length; i++) {
+        const airRow = airOnly.data[i];
+        if (airRow) {
+          // Row # is 1-based, matching the Consolidated sheet data rows
+          // (header is row 1, first data row is row 2).
+          airRows.push([i + 2, ...airRow]);
+        }
+      }
+
+      const ws2 = XLSX.utils.aoa_to_sheet(airRows);
+
+      // Auto-size
+      const airColWidths = [];
+      for (const row of airRows.slice(0, 50)) {
+        if (!row) continue;
+        for (let c = 0; c < row.length; c++) {
+          const len = row[c] ? String(row[c]).length : 0;
+          airColWidths[c] = Math.min(Math.max(airColWidths[c] || 8, len), 40);
+        }
+      }
+      ws2['!cols'] = airColWidths.map(w => ({ wch: w }));
+
+      XLSX.utils.book_append_sheet(wb, ws2, 'Air-Only Fields');
+    }
+  }
 
   XLSX.writeFile(wb, fileName);
 }

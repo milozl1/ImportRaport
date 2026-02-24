@@ -5,6 +5,7 @@
 
 import { BROKERS } from './brokers.js';
 import { mergeFiles, downloadExcel } from './engine.js';
+import { aggregateData, renderCharts, renderKPICards, renderCountryTable, renderHSTable } from './analytics.js';
 
 /* ───────────────────────────────────────────────
    State
@@ -23,6 +24,7 @@ const views = {
   broker: $('#view-broker'),
   upload: $('#view-upload'),
   result: $('#view-result'),
+  analytics: $('#view-analytics'),
 };
 
 /* ───────────────────────────────────────────────
@@ -94,7 +96,7 @@ function renderBrokerGrid() {
   const grid = $('#broker-grid');
   grid.innerHTML = BROKERS.map(b => {
     const caps = (b.capabilities || []).map(c =>
-      `<li class="cap-item"><span class="cap-icon">${c.icon}</span><span class="cap-text">${c.text}</span></li>`
+      `<li class="cap-item"><span class="cap-text">${c.text}</span></li>`
     ).join('');
     return `
     <div class="broker-card" data-broker="${b.id}" style="--broker-color:${b.color}; --broker-accent:${b.accent}">
@@ -669,8 +671,64 @@ async function handleMerge() {
 function handleDownload() {
   if (!mergedResult) return;
   const fileName = `${selectedBroker.label}_Consolidated_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  downloadExcel(mergedResult.headers, mergedResult.data, fileName);
+  downloadExcel(mergedResult.headers, mergedResult.data, fileName, mergedResult.airOnly);
   toast('Download started', 'success');
+}
+
+/* ───────────────────────────────────────────────
+   Analytics handler
+   ─────────────────────────────────────────────── */
+
+function handleOpenAnalytics() {
+  if (!mergedResult || !selectedBroker) return;
+
+  showLoading('Analyzing data…');
+
+  // Small delay to let the loading overlay appear
+  setTimeout(() => {
+    try {
+      const analytics = aggregateData(mergedResult.headers, mergedResult.data, selectedBroker.id);
+      if (!analytics) {
+        hideLoading();
+        toast('Analytics not available for this broker', 'error');
+        return;
+      }
+
+      renderAnalyticsDashboard(analytics);
+      hideLoading();
+      showView('analytics');
+      toast('Analytics dashboard ready', 'success');
+    } catch (err) {
+      hideLoading();
+      toast('Analytics failed: ' + err.message, 'error');
+      console.error(err);
+    }
+  }, 50);
+}
+
+function renderAnalyticsDashboard(analytics) {
+  const b = selectedBroker;
+
+  // Header
+  $('#analytics-header').innerHTML = `
+    <div class="broker-logo-lg">${b.logoIcon}</div>
+    <div class="result-info">
+      <h2>${b.label} — Import Analytics</h2>
+      <p>${analytics.totalRows.toLocaleString()} declarations analyzed · ${analytics.kpis.monthsCovered} month${analytics.kpis.monthsCovered !== 1 ? 's' : ''} · ${analytics.kpis.uniqueCountries} countr${analytics.kpis.uniqueCountries !== 1 ? 'ies' : 'y'}</p>
+    </div>
+  `;
+
+  // KPI cards
+  $('#analytics-kpis').innerHTML = renderKPICards(analytics.kpis);
+
+  // Country & HS tables
+  $('#analytics-country-table').innerHTML = renderCountryTable(analytics.countries);
+  $('#analytics-hs-table').innerHTML = renderHSTable(analytics.hsChapters);
+
+  // Charts (needs a brief delay for canvases to be in DOM)
+  requestAnimationFrame(() => {
+    renderCharts(analytics);
+  });
 }
 
 /* ───────────────────────────────────────────────
@@ -693,6 +751,17 @@ function init() {
 
   $('#btn-back-upload').addEventListener('click', () => showView('upload'));
   $('#btn-new-session').addEventListener('click', () => {
+    selectedBroker = null;
+    uploadedFiles = [];
+    mergedResult = null;
+    showView('broker');
+  });
+
+  // Analytics buttons
+  $('#btn-analytics').addEventListener('click', handleOpenAnalytics);
+  $('#btn-back-result').addEventListener('click', () => showView('result'));
+  $('#btn-download-analytics').addEventListener('click', handleDownload);
+  $('#btn-new-session-analytics').addEventListener('click', () => {
     selectedBroker = null;
     uploadedFiles = [];
     mergedResult = null;
