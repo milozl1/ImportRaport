@@ -6,10 +6,14 @@
 
 import * as XLSX from 'xlsx';
 import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { validateAndFix, reportSummary } from '../src/js/validator.js';
 
-const EXCEL_DIR = join(import.meta.dirname, '..', 'excel');
+// Resolve excel directory relative to the current working directory so the
+// script behaves the same whether run from the project root or via an IDE.
+// Point audit at the DHL folder
+const EXCEL_DIR = join(process.cwd(), 'excel', 'DHL');
 
 // DHL broker config (same as brokers.js)
 const DHL = {
