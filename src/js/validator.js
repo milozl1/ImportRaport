@@ -545,6 +545,262 @@ function validateAndFixFedEx(data, report) {
   return report;
 }
 
+/* ───────────────────────────────────────────────
+   DSV Column Layout & Validation
+   ─────────────────────────────────────────────── */
+
+// DSV numeric column HEADERS — used for header-based mapping because
+// DSV files have variable column counts (92 → 162 across months).
+// These are the German column headers that should contain numeric values.
+const DSV_NUMERIC_HEADERS = [
+  'Rechnungsbetrag',
+  'Rechnungskurs',
+  'Gesamtgewicht',
+  'Lieferkey',
+  'Geschäftsart', 'Geschã¤ftsart',
+  'PositionNo',
+  'Positionen',
+  'Vorraussichtliche Zollabgabe', 'Vorausstl. Zollabgabe',
+  'Vorraussichtliche Zollsatzabgabe', 'Vorausstl. Zollsatzabgabe',
+  'Vorraussichtliche Eustabgabe', 'Vorausstl. Eustabgabe',
+  'Vorraussichtliche Eustsatzabgabe', 'Vorausstl. Eustsatzabgabe',
+  'Zollwert',
+  'AbgabeZoll',
+  'AbgabeZollsatz',
+  'Eustwert',
+  'AbgabeEust',
+  'AbgabeEustsatz',
+  'Status Steuerbescheid',
+  'Artikelpreis',
+  'Statistischerwert',
+  'Eust manuell',
+  'EU Code',
+  'Beguenstigung',
+  'Eigenmasse',
+  'Rohmasse',
+  'Aussenhandelstatistische Menge',
+  'AnzahlPackstücke', 'Anzahlpackstã¼cke',
+  'DV1Rechnungsbetrag',
+  'DV1UmgerechnerterRechnungsbetrag',
+  'DV1Versicherung',
+  'DV1Frachtkosten',
+  'DV1Luftfrachtkosten',
+  'DV1Materialien',
+  'DV1Provisionen',
+  'KontoZoll', 'AufschubkontoZoll',
+  'KontoEusT', 'AufschubKontoEusT',
+  'Vertreter des Anmelders',
+  'Nettokurs EAB',
+  'DV1 Nettopreis Kurs',
+  'DV1 Bef.kosten bis Ort des Verbring',
+  'DV1 Befoerderungskurs',
+  'DV1 Lade/Behandlungskosten',
+  'DV1 Versicherungskosten',
+  'DV1 Luftfrachtkosten LK',
+  'Positionsunterlagenzeile',
+  'Unterlagenbereich',
+  'AbgabeAntidumping',
+  'AbgabeAntidumpingSatz',
+];
+
+// DSV date HEADERS — Excel serial numbers that need DD.MM.YYYY formatting
+const DSV_DATE_HEADERS = [
+  'Anlagedatum',
+  'Überlassungsdatum', 'Ãberlassungsdatum',
+  'Annahmedatum',
+  'UstID-DT',
+  'Unterlagendatum',
+];
+
+// DSV datetime HEADERS — Excel serial numbers with time fraction
+const DSV_DATETIME_HEADERS = [
+  'Zeitpunkt der letzten CUSTAX',
+];
+
+// DSV time HEADERS — Excel time fraction (0.xxxxx)
+const DSV_TIME_HEADERS = [
+  'Zeit',
+];
+
+/**
+ * Convert Excel serial date number to DD.MM.YYYY string.
+ * Excel uses 1-Jan-1900 = serial 1, with the Lotus 1-2-3 leap year bug.
+ */
+function excelSerialToDate(serial) {
+  if (typeof serial !== 'number' || serial < 1) return null;
+  const epoch = new Date(Date.UTC(1899, 11, 30)); // 30 Dec 1899
+  const ms = epoch.getTime() + serial * 86400000;
+  const d = new Date(ms);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+}
+
+/**
+ * Convert Excel serial datetime to DD.MM.YYYY HH:MM string.
+ */
+function excelSerialToDateTime(serial) {
+  if (typeof serial !== 'number' || serial < 1) return null;
+  const epoch = new Date(Date.UTC(1899, 11, 30));
+  const ms = epoch.getTime() + serial * 86400000;
+  const d = new Date(ms);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const min = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
+}
+
+/**
+ * Convert Excel time fraction (0.xxxxx) to HH:MM string.
+ */
+function excelTimeToString(serial) {
+  if (typeof serial !== 'number') return null;
+  const totalMinutes = Math.round(serial * 24 * 60);
+  const hh = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+  const mm = String(totalMinutes % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+/**
+ * Build a header→column-index map. Normalises header names by
+ * lowercasing so that UTF-8 / latin1 encoding mismatches don't
+ * prevent a match.
+ */
+function buildHeaderMap(headers) {
+  const map = {};
+  if (!headers || headers.length === 0) return map;
+  const row = headers[0];
+  if (!row) return map;
+  for (let i = 0; i < row.length; i++) {
+    const h = row[i];
+    if (h != null && String(h).trim() !== '') {
+      map[String(h).trim().toLowerCase()] = i;
+    }
+  }
+  return map;
+}
+
+/**
+ * Resolve a list of header names to column indexes using the map.
+ * Returns a sorted, deduplicated array of indexes.
+ */
+function resolveColumns(headerMap, headerNames) {
+  const cols = [];
+  for (const name of headerNames) {
+    const idx = headerMap[name.toLowerCase()];
+    if (idx !== undefined && !cols.includes(idx)) {
+      cols.push(idx);
+    }
+  }
+  return cols.sort((a, b) => a - b);
+}
+
+/**
+ * DSV-specific validation and correction pipeline.
+ *
+ * Issues found in analysis of 16 DSV files (~4,800 data rows):
+ *
+ * 1. European comma-decimal format in CSV files (months 01-09):
+ *    All numeric values use "1234,56" format. XLSX files (months 10-12)
+ *    already have dot-decimal "1234.56".
+ *
+ * 2. String-to-Number: after comma→dot fix, numeric columns still hold
+ *    string values which cause locale issues in the output Excel.
+ *
+ * 3. Excel serial dates in XLSX files: date columns appear as serial
+ *    numbers (e.g. 45950) instead of DD.MM.YYYY strings.
+ *
+ * No column-shift issues were found in DSV data.
+ */
+function validateAndFixDSV(data, report, headers) {
+  const headerMap = buildHeaderMap(headers);
+  const numericCols = resolveColumns(headerMap, DSV_NUMERIC_HEADERS);
+  const dateCols = resolveColumns(headerMap, DSV_DATE_HEADERS);
+  const dateTimeCols = resolveColumns(headerMap, DSV_DATETIME_HEADERS);
+  const timeCols = resolveColumns(headerMap, DSV_TIME_HEADERS);
+
+  for (let r = 0; r < data.length; r++) {
+    const row = data[r];
+    if (!row) continue;
+
+    // ── 1. European comma→dot for ALL cells ──
+    for (let c = 0; c < row.length; c++) {
+      const { value, changed, detail } = fixNumericValue(row[c]);
+      if (changed) {
+        row[c] = value;
+        report.numberFixes++;
+        report.issues.push({ row: r + 1, type: 'number', detail: `Col ${c}: ${detail}` });
+      }
+    }
+
+    // ── 2. String→Number for known numeric columns ──
+    for (const col of numericCols) {
+      if (col >= row.length) continue;
+      const v = row[col];
+      if (v == null || v === '' || typeof v === 'number') continue;
+      const s = String(v).trim();
+      const n = Number(s);
+      if (s.length > 0 && !isNaN(n)) {
+        row[col] = n;
+        report.numberFixes++;
+        report.issues.push({ row: r + 1, type: 'number', detail: `Col ${col}: "${s}" → ${n} (string→number)` });
+      }
+    }
+
+    // ── 3. Excel serial date → DD.MM.YYYY ──
+    for (const col of dateCols) {
+      if (col >= row.length) continue;
+      const v = row[col];
+      if (typeof v !== 'number') continue;
+      if (v > 40000 && v < 60000) {
+        const formatted = excelSerialToDate(v);
+        if (formatted) {
+          row[col] = formatted;
+          report.numberFixes++;
+          report.issues.push({ row: r + 1, type: 'date', detail: `Col ${col}: ${v} → "${formatted}" (serial→date)` });
+        }
+      }
+    }
+
+    // ── 3b. Excel serial datetime → DD.MM.YYYY HH:MM ──
+    for (const col of dateTimeCols) {
+      if (col >= row.length) continue;
+      const v = row[col];
+      if (typeof v !== 'number') continue;
+      if (v > 40000 && v < 60000) {
+        const formatted = excelSerialToDateTime(v);
+        if (formatted) {
+          row[col] = formatted;
+          report.numberFixes++;
+          report.issues.push({ row: r + 1, type: 'date', detail: `Col ${col}: ${v} → "${formatted}" (serial→datetime)` });
+        }
+      }
+    }
+
+    // ── 3c. Excel time fraction → HH:MM ──
+    for (const col of timeCols) {
+      if (col >= row.length) continue;
+      const v = row[col];
+      if (typeof v !== 'number') continue;
+      if (v >= 0 && v < 1) {
+        const formatted = excelTimeToString(v);
+        if (formatted) {
+          row[col] = formatted;
+          report.numberFixes++;
+          report.issues.push({ row: r + 1, type: 'date', detail: `Col ${col}: ${v} → "${formatted}" (serial→time)` });
+        }
+      }
+    }
+  }
+
+  report.totalIssues = report.shiftFixes + report.numberFixes +
+    report.issues.filter(i => i.type === 'warning').length;
+  return report;
+}
+
 /**
  * Fixes European-style numeric values:
  *  - Leading comma/dot  →  prepend 0: ",5" → "0.5"
@@ -569,6 +825,13 @@ function fixNumericValue(val) {
   if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
     s = s.replace(/\./g, '').replace(',', '.');
   }
+  // Thousands-comma without decimal: "200,000" or "1,500" or "12,345,678"
+  // Pattern: 1-3 digits then one or more groups of ,NNN with no further decimals.
+  // Must come BEFORE the general comma-as-decimal rule so that "200,000" is
+  // treated as 200000, not 200.000.
+  else if (/^-?\d{1,3}(,\d{3})+$/.test(s)) {
+    s = s.replace(/,/g, '');
+  }
   // Single comma as decimal separator (no dots present): "123,45" or "-0,5"
   // Must look like a number: optional minus, digits, single comma, digits
   else if (/^-?\d+,\d+$/.test(s)) {
@@ -583,7 +846,7 @@ function fixNumericValue(val) {
    Main Pipeline
    ─────────────────────────────────────────────── */
 
-export function validateAndFix(data, broker) {
+export function validateAndFix(data, broker, headers) {
   const report = {
     shiftFixes: 0,
     numberFixes: 0,
@@ -593,6 +856,10 @@ export function validateAndFix(data, broker) {
 
   if (broker.id === 'FEDEX') {
     return validateAndFixFedEx(data, report);
+  }
+
+  if (broker.id === 'DSV') {
+    return validateAndFixDSV(data, report, headers);
   }
 
   if (broker.id !== 'DHL') {

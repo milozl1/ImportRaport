@@ -67,6 +67,7 @@ export const BROKERS = [
     headerRows: 1,
     headerStartRow: 0,
     dataStartRow: 1,
+    csvDelimiter: ';',
     color: '#002B5C',
     textColor: '#FFFFFF',
     accent: '#0077C8',
@@ -74,6 +75,61 @@ export const BROKERS = [
       <rect width="120" height="40" rx="6" fill="#002B5C"/>
       <text x="28" y="28" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="#FFFFFF">DSV</text>
     </svg>`,
+    /**
+     * DSV Luftfracht XLSX files can contain multiple sheets.
+     * The real data is on the largest "Importzollanmeldungen…" or
+     * "Hella …" sheet, not the template/metadata sheets.
+     */
+    sheetSelector: (sheetNames, fileName) => {
+      if (!fileName || !fileName.toLowerCase().includes('luft')) return sheetNames[0];
+      // Prefer sheets with actual customs data
+      const dataSheet = sheetNames.find(n =>
+        /^(importzoll|hella)/i.test(n)
+      );
+      return dataSheet || sheetNames[0];
+    },
+    /**
+     * DSV report format changed during 2025: months 01-04 use 92 columns,
+     * month 05 uses 138 columns, months 06+ use 158 columns.
+     * Many columns were renamed.  This synonym map lets the merge engine
+     * align data from the old format into the new unified header.
+     * Key = old name (92-col), Value = new name (138/158-col equivalent).
+     */
+    headerSynonyms: {
+      'Registrienummer/MRN':               'Registriernummer/MRN',
+      'Versender EORI':                    'Versender CZ EORI',
+      'Versender Name':                    'CZ Name',
+      'Versender Ländercode':              'CZ Ländercode',
+      'Empfänger EORI':                    'Empfänger CN EORI',
+      'Empfänger Name':                    'CN Name',
+      'Empfänger Ländercode':              'CN Ländercode',
+      'Anmelder EORI':                     'Anmelder DT EORI',
+      'Anmelder Name':                     'DT Name',
+      'Anmelder Ländercode':               'DT Ländercode',
+      'Addressierte Zollstelle':           'Zollstelle',
+      'AufschubHZAZoll':                   'HZAZoll',
+      'AufschubkontoZoll':                 'KontoZoll',
+      'AufschubTextZoll':                  'TextZoll',
+      'AufschubEORIZoll':                  'EORIZoll',
+      'AufschubKennzeichenEigenZoll':      'KennzeichenEigenZoll',
+      'AufschubArtEust':                   'ArtEust',
+      'AufschubHZAEust':                   'HZAEust',
+      'AufschubKontoEusT':                 'KontoEusT',
+      'AufschubTextEust':                  'TextEust',
+      'AufschubEORIEust':                  'EORIEust',
+      'AufschubKennzeichenEigenEust':      'KennzeichenEigenEust',
+      'Vorraussichtliche Zollabgabe':      'Vorausstl. Zollabgabe',
+      'Vorraussichtliche Zollsatzabgabe':  'Vorausstl. Zollsatzabgabe',
+      'Vorraussichtliche Eustabgabe':      'Vorausstl. Eustabgabe',
+      'Vorraussichtliche Eustsatzabgabe':  'Vorausstl. Eustsatzabgabe',
+      'DV1Rechnugnswährung':               'Währung',
+      'DV1UmrechnungsWährung':             'Währung',
+      'DV1Versicherungswährung':            'Währung',
+      'DV1Luftfrachtkostenwährung':         'Währung',
+      'DV1Frachtkostenwährung':             'Währung',
+      'DV1MaterialienWährung':              'Währung',
+      'Vorpapiere Registriernummer':       'Vorpapiere Reg.nummer',
+    },
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
       const nonEmpty = row.filter(c => c != null && c !== '');
