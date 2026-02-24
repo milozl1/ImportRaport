@@ -9,7 +9,7 @@
 </head>
 <body>
 
-  <!-- ═══ TOPBAR ═══ -->
+  <!-- TOPBAR -->
   <header class="topbar">
     <div class="logo">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/><circle cx="12" cy="14" r="1"/></svg>
@@ -26,27 +26,23 @@
     <span class="version-badge">v2.0</span>
   </header>
 
-  <!-- ═══ MAIN ═══ -->
+  <!-- MAIN -->
   <main class="main">
 
-    <!-- ── STEP 1: BROKER SELECTION ── -->
+    <!-- STEP 1: BROKER SELECTION -->
     <section class="view active" id="view-broker">
       <h1 class="section-title">Select Broker</h1>
       <p class="section-subtitle">Choose the customs broker whose files you want to consolidate</p>
-      <div class="broker-grid" id="broker-grid">
-        <!-- Rendered by JS -->
-      </div>
+      <div class="broker-grid" id="broker-grid"></div>
     </section>
 
-    <!-- ── STEP 2: FILE UPLOAD ── -->
+    <!-- STEP 2: FILE UPLOAD -->
     <section class="view" id="view-upload">
       <h1 class="section-title">Upload Files</h1>
       <p class="section-subtitle">Add one or more monthly report files for the selected broker</p>
 
       <div class="upload-section">
-        <div class="active-broker-banner" id="active-broker-banner">
-          <!-- Rendered by JS -->
-        </div>
+        <div class="active-broker-banner" id="active-broker-banner"></div>
 
         <div class="drop-zone" id="drop-zone">
           <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -70,33 +66,19 @@
       </div>
     </section>
 
-    <!-- ── STEP 3: RESULTS ── -->
+    <!-- STEP 3: RESULTS -->
     <section class="view" id="view-result">
-      <div class="result-header" id="result-header">
-        <!-- Rendered by JS -->
-      </div>
-
-      <div class="stats-row" id="stats-row">
-        <!-- Rendered by JS -->
-      </div>
-
-      <div class="validation-panel" id="validation-panel">
-        <!-- Rendered by JS -->
-      </div>
-
-      <div class="file-breakdown" id="file-breakdown">
-        <!-- Rendered by JS -->
-      </div>
-
-      <div class="preview-section" id="preview-section">
-        <!-- Rendered by JS -->
-      </div>
+      <div class="result-header" id="result-header"></div>
+      <div class="stats-row" id="stats-row"></div>
+      <div class="validation-panel" id="validation-panel"></div>
+      <div class="file-breakdown" id="file-breakdown"></div>
+      <div class="preview-section" id="preview-section"></div>
 
       <div class="actions">
         <button class="btn btn-secondary" id="btn-back-upload">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             Upload More
-          </button>
+        </button>
         <button class="btn btn-success" id="btn-download">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download Excel
@@ -110,13 +92,13 @@
 
   </main>
 
-  <!-- ═══ LOADING OVERLAY ═══ -->
+  <!-- LOADING OVERLAY -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="spinner"></div>
     <div class="loading-text" id="loading-text">Processing…</div>
   </div>
 
-  <!-- ═══ DETAIL REPORT MODAL ═══ -->
+  <!-- DETAIL REPORT MODAL -->
   <div class="modal-overlay" id="report-modal">
     <div class="modal">
       <div class="modal-header">
@@ -125,13 +107,11 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="modal-body" id="modal-body">
-        <!-- Rendered by JS -->
-      </div>
+      <div class="modal-body" id="modal-body"></div>
     </div>
   </div>
 
-  <!-- ═══ TOASTS ═══ -->
+  <!-- TOASTS -->
   <div class="toast-container" id="toast-container"></div>
 
   <script type="module" src="./src/js/app.js"></script>

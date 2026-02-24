@@ -92,13 +92,22 @@ function hideLoading() {
 
 function renderBrokerGrid() {
   const grid = $('#broker-grid');
-  grid.innerHTML = BROKERS.map(b => `
+  grid.innerHTML = BROKERS.map(b => {
+    const caps = (b.capabilities || []).map(c =>
+      `<li class="cap-item"><span class="cap-icon">${c.icon}</span><span class="cap-text">${c.text}</span></li>`
+    ).join('');
+    return `
     <div class="broker-card" data-broker="${b.id}" style="--broker-color:${b.color}; --broker-accent:${b.accent}">
       <div class="broker-logo">${b.logoIcon}</div>
       <div class="broker-name">${b.label}</div>
       <div class="broker-tag">${b.headerRows} header row${b.headerRows > 1 ? 's' : ''}</div>
+      <div class="broker-capabilities">
+        <div class="cap-title">What this module does</div>
+        <ul class="cap-list">${caps}</ul>
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   grid.addEventListener('click', (e) => {
     const card = e.target.closest('.broker-card');
