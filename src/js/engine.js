@@ -144,6 +144,9 @@ function remapRow(row, mapping, width) {
   return out;
 }
 
+// Export alignment helpers for testing
+export { buildUnifiedHeader, buildColumnMapping, remapRow };
+
 /**
  * Parse a single file into an array-of-arrays.
  * @param {File} file    — browser File object

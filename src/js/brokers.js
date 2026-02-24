@@ -175,23 +175,4 @@ export const BROKERS = [
       return nonEmpty.length < 2;
     },
   },
-  {
-    id: 'HELLMANN',
-    label: 'Hellmann',
-    headerRows: 1,
-    headerStartRow: 0,
-    dataStartRow: 1,
-    color: '#003882',
-    textColor: '#FFFFFF',
-    accent: '#00A3E0',
-    logoIcon: `<svg viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="120" height="40" rx="6" fill="#003882"/>
-      <text x="15" y="27" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">Hellmann</text>
-    </svg>`,
-    isFooterRow: (row) => {
-      if (!row || row.length < 2) return true;
-      const nonEmpty = row.filter(c => c != null && c !== '');
-      return nonEmpty.length < 2;
-    },
-  },
 ];

@@ -801,6 +801,153 @@ function validateAndFixDSV(data, report, headers) {
   return report;
 }
 
+/* ───────────────────────────────────────────────
+   UPS Column Layout (65 columns, zero-based)
+   ─────────────────────────────────────────────── */
+
+// UPS numeric columns — all should be JS Number type.
+// Derived from analysis of 12 UPS files (934 data rows, 65 cols).
+// All values are already dot-decimal from XLSX, but we enforce type Number.
+const NUMERIC_COLUMNS_UPS = [
+  5,   // Positionsnummer
+  6,   // AH Stat. Menge
+  8,   // Rechnungspreis
+  10,  // Kurs
+  11,  // Rechnungspreis in Euro
+  15,  // Kolli-Anzahl
+  16,  // Gesamt-Rohmasse
+  17,  // Frachbetrag (lt. Frachtbrief)
+  19,  // Kurs3
+  20,  // Frachtbetrag in Euro
+  21,  // Faktor ant. Frachtkosten
+  30,  // Zollsatz
+  31,  // Zollwert
+  32,  // Zoll (Betrag in Euro)
+  33,  // endg. Antidumping Zollsatz
+  34,  // endg. Antidumping Zollbetrag
+  35,  // vorl. Antidumping Zollsatz
+  36,  // vorl. Antidumping Zollbetrag
+  37,  // Zusatzzölle (ZUSZEU)
+  38,  // EUSt-Satz
+  39,  // EUSt-Wert
+  40,  // EUSt-Betrag
+  47,  // Anteilige Frachtkosten bis EU-Grenze in Euro
+];
+
+// UPS key column indexes
+const UPS_COL_TARIF_NR        = 28;   // Zolltarifnummer (HS code, 8-11 digits)
+const UPS_COL_VERSENDUNGSLAND = 23;   // Versendungsland (2-letter country)
+const UPS_COL_URSPRUNGSLAND   = 24;   // Ursprungsland (2-letter country)
+const UPS_COL_LAND            = 42;   // Land (sender country)
+const UPS_COL_LAND4           = 44;   // Land4 (seller country)
+const UPS_COUNTRY_COLS        = [23, 24, 42, 44];
+const UPS_TRAILING_EMPTY_COLS = [62, 63, 64]; // always empty
+
+/**
+ * UPS-specific validation and correction pipeline.
+ *
+ * Findings from analysis of 12 UPS files (934 rows, 65 cols):
+ *   1. All numeric columns are already JS Number from XLSX — no comma-decimal.
+ *   2. Headers are 100% identical across all 12 files — no alignment needed.
+ *   3. No footer rows — every row below the header is data.
+ *   4. Dates are DD.MM.YYYY strings — already correct.
+ *   5. HS codes are valid 8-11 digit strings.
+ *   6. Country codes are valid 2-letter ISO.
+ *   7. 3 trailing empty columns (62-64) — trimmed.
+ *
+ * Pipeline:
+ *   1. Trailing whitespace / newline cleanup (all string cells)
+ *   2. fixNumericValue for safety (handles any edge-case European format)
+ *   3. String-to-Number conversion for known numeric columns
+ *   4. Trim trailing empty columns (62-64)
+ *   5. Post-repair validation (HS codes, country codes)
+ */
+function validateAndFixUPS(data, report) {
+  for (let r = 0; r < data.length; r++) {
+    const row = data[r];
+    if (!row) continue;
+
+    // ── 1. Trailing whitespace / newline cleanup ──
+    for (let c = 0; c < row.length; c++) {
+      const v = row[c];
+      if (typeof v !== 'string') continue;
+      const cleaned = v.replace(/[\r\n]+$/g, '').replace(/^[\r\n]+/g, '');
+      if (cleaned !== v) {
+        row[c] = cleaned;
+        report.numberFixes++;
+        report.issues.push({
+          row: r + 1, type: 'cleanup',
+          detail: `Col ${c}: stripped trailing newline/whitespace`,
+        });
+      }
+    }
+
+    // ── 2. Number format correction — all columns ──
+    for (let c = 0; c < row.length; c++) {
+      const { value, changed, detail } = fixNumericValue(row[c]);
+      if (changed) {
+        row[c] = value;
+        report.numberFixes++;
+        report.issues.push({ row: r + 1, type: 'number', detail: `Col ${c}: ${detail}` });
+      }
+    }
+
+    // ── 3. String-to-Number conversion for numeric columns ──
+    for (const col of NUMERIC_COLUMNS_UPS) {
+      if (col >= row.length) continue;
+      const v = row[col];
+      if (v == null || v === '' || typeof v === 'number') continue;
+      const s = String(v).trim();
+      const n = Number(s);
+      if (s.length > 0 && !isNaN(n)) {
+        row[col] = n;
+        report.numberFixes++;
+        report.issues.push({
+          row: r + 1, type: 'number',
+          detail: `Col ${col}: string→number "${s}" → ${n}`,
+        });
+      }
+    }
+
+    // ── 4. Trim trailing empty columns (62-64) ──
+    while (row.length > 62 && (row[row.length - 1] == null || row[row.length - 1] === '')) {
+      row.pop();
+    }
+
+    // ── 5. Post-repair validation ──
+
+    // HS Code (col 28): should be 8-11 digit string
+    const hs = row[UPS_COL_TARIF_NR];
+    if (hs != null && hs !== '') {
+      const hsStr = String(hs).trim();
+      if (hsStr.length > 0 && !/^\d{8,11}$/.test(hsStr)) {
+        report.issues.push({
+          row: r + 1, type: 'warning', zone: 'HS Code',
+          detail: `Zolltarifnummer (col ${UPS_COL_TARIF_NR}) invalid: "${hsStr.substring(0, 30)}"`,
+        });
+      }
+    }
+
+    // Country code validation
+    for (const col of UPS_COUNTRY_COLS) {
+      if (col >= row.length) continue;
+      const v = row[col];
+      if (v == null || v === '') continue;
+      const s = String(v).trim();
+      if (s.length > 0 && !/^[A-Z]{2}$/i.test(s)) {
+        report.issues.push({
+          row: r + 1, type: 'warning', zone: 'Country',
+          detail: `Col ${col} country invalid: "${s}"`,
+        });
+      }
+    }
+  }
+
+  report.totalIssues = report.shiftFixes + report.numberFixes +
+    report.issues.filter(i => i.type === 'warning').length;
+  return report;
+}
+
 /**
  * Fixes European-style numeric values:
  *  - Leading comma/dot  →  prepend 0: ",5" → "0.5"
@@ -860,6 +1007,10 @@ export function validateAndFix(data, broker, headers) {
 
   if (broker.id === 'DSV') {
     return validateAndFixDSV(data, report, headers);
+  }
+
+  if (broker.id === 'UPS') {
+    return validateAndFixUPS(data, report);
   }
 
   if (broker.id !== 'DHL') {
