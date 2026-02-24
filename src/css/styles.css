@@ -896,6 +896,297 @@ body::before {
 ::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ---------- Detail Report Modal ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 13, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 24px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  width: 100%;
+  max-width: 820px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.25s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.modal-close:hover {
+  background: var(--bg-card-hover);
+  color: var(--text);
+  border-color: var(--border-hover);
+}
+
+.modal-close svg { width: 16px; height: 16px; }
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* ── Modal section groups ── */
+.report-section {
+  margin-bottom: 24px;
+}
+
+.report-section:last-child { margin-bottom: 0; }
+
+.report-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  transition: background var(--transition);
+  user-select: none;
+}
+
+.report-section-header:hover { background: var(--bg-card-hover); }
+
+.report-section-header .section-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.report-section-header .section-icon svg { width: 16px; height: 16px; }
+
+.report-section-header .section-icon.shift-icon {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.report-section-header .section-icon.number-icon {
+  background: rgba(88, 166, 255, 0.08);
+  color: var(--accent);
+}
+
+.report-section-header .section-icon.warn-icon {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.report-section-header .section-icon.clean-icon {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.report-section-header .section-title-text {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.report-section-header .section-count {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: var(--bg-glass);
+}
+
+.report-section-header .section-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  transition: transform var(--transition);
+}
+
+.report-section-header.open .section-chevron {
+  transform: rotate(180deg);
+}
+
+.report-section-body {
+  display: none;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--bg-card);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.report-section-body.open { display: block; }
+
+/* ── Subsections within modal ── */
+.report-subsection {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-subsection:last-child { border-bottom: none; }
+
+.report-subsection-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-subsection-title .sub-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--bg-glass);
+}
+
+/* ── Row issue item ── */
+.report-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.report-issue .issue-row {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: right;
+}
+
+.report-issue .issue-detail {
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.report-issue .issue-detail code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  background: var(--bg-glass);
+  border-radius: 3px;
+  color: var(--text);
+}
+
+/* ── Summary bar in modal ── */
+.report-summary-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.report-summary-stat {
+  text-align: center;
+  flex: 1;
+  min-width: 100px;
+}
+
+.report-summary-stat .stat-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+
+.report-summary-stat .stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.report-summary-stat .stat-num.shift { color: var(--warning); }
+.report-summary-stat .stat-num.number { color: var(--accent); }
+.report-summary-stat .stat-num.warn { color: var(--danger); }
+.report-summary-stat .stat-num.clean { color: var(--success); }
+
+/* ── "View Report" button in validation panel ── */
+.btn-view-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all var(--transition);
+  margin: 12px 20px 16px;
+}
+
+.btn-view-report:hover {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.btn-view-report svg { width: 14px; height: 14px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   .topbar { padding: 0 16px; }

@@ -5,8 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Import Report — Customs Data Consolidation</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>" />
-  <script type="module" crossorigin src="/assets/index-D3-3mm32.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-QWwiDGu_.css">
+
+  <script type="importmap">
+  {
+    "imports": {
+      "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs",
+      "papaparse": "https://cdn.jsdelivr.net/npm/papaparse@5.5.3/+esm"
+    }
+  }
+  </script>
+  <script type="module" crossorigin src="/assets/index-27R950VS.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BHkhL7HA.css">
 </head>
 <body>
 
@@ -115,6 +124,21 @@
   <div class="loading-overlay" id="loading-overlay">
     <div class="spinner"></div>
     <div class="loading-text" id="loading-text">Processing…</div>
+  </div>
+
+  <!-- ═══ DETAIL REPORT MODAL ═══ -->
+  <div class="modal-overlay" id="report-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Validation Report</h2>
+        <button class="modal-close" id="modal-close" title="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
   </div>
 
   <!-- ═══ TOASTS ═══ -->

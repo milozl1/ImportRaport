@@ -275,6 +275,20 @@ function renderValidationPanel(v) {
   const statusIcon = hasIssues ? IC.alert : IC.check;
   const statusText = hasIssues ? 'Data corrected automatically' : 'All data validated — no issues';
 
+  // Categorize issues for the summary badges
+  const shiftIssues = issues.filter(i => i.type === 'shift');
+  const numberIssues = issues.filter(i => i.type === 'number');
+  const warningIssues = issues.filter(i => i.type === 'warning');
+
+  // Sub-categorize shifts
+  const shipperShifts = shiftIssues.filter(i => (i.zone || '').includes('Shipper'));
+  const consigneeShifts = shiftIssues.filter(i => (i.zone || '').includes('Consignee'));
+  const midRowShifts = shiftIssues.filter(i => (i.detail || '').includes('Mid-row'));
+  const goodsShifts = shiftIssues.filter(i => (i.zone || '').includes('Goods'));
+
+  const midRowShifts2 = shiftIssues.filter(i => (i.zone || '') === 'Mid-row');
+  const goodsShifts2 = shiftIssues.filter(i => (i.zone || '') === 'Goods');
+
   panel.innerHTML = `
     <div class="validation-header" id="validation-toggle">
       <div class="status-icon ${statusClass}">${statusIcon}</div>
@@ -285,44 +299,285 @@ function renderValidationPanel(v) {
     <div class="validation-body" id="validation-body">
       <div class="validation-badges">
         ${shiftCount > 0 ? `<span class="v-badge shift">${IC.shift} ${shiftCount} shifted row${shiftCount > 1 ? 's' : ''} realigned</span>` : ''}
+        ${shipperShifts.length > 0 ? `<span class="v-badge shift" style="opacity:0.8;font-size:0.72rem">${shipperShifts.length} shipper</span>` : ''}
+        ${consigneeShifts.length > 0 ? `<span class="v-badge shift" style="opacity:0.8;font-size:0.72rem">${consigneeShifts.length} consignee</span>` : ''}
+        ${midRowShifts2.length > 0 ? `<span class="v-badge shift" style="opacity:0.8;font-size:0.72rem">${midRowShifts2.length} mid-row</span>` : ''}
+        ${goodsShifts2.length > 0 ? `<span class="v-badge shift" style="opacity:0.8;font-size:0.72rem">${goodsShifts2.length} goods zone</span>` : ''}
         ${numberCount > 0 ? `<span class="v-badge number">${IC.hash} ${numberCount.toLocaleString()} number format${numberCount > 1 ? 's' : ''} fixed</span>` : ''}
         ${warnCount > 0 ? `<span class="v-badge warn">${IC.alert} ${warnCount} warning${warnCount > 1 ? 's' : ''}</span>` : ''}
         ${!hasIssues ? `<span class="v-badge number">${IC.check} Clean data — no corrections needed</span>` : ''}
       </div>
-      ${hasIssues ? renderIssuesTable(issues) : ''}
+      ${hasIssues ? `<button class="btn-view-report" id="btn-view-report">${IC.list} View Detailed Report</button>` : ''}
     </div>
   `;
 
-  // Toggle
+  // Toggle expand/collapse
   const toggle = $('#validation-toggle');
   const body = $('#validation-body');
   toggle.addEventListener('click', () => {
     toggle.classList.toggle('open');
     body.classList.toggle('open');
   });
+
+  // Open modal on click
+  if (hasIssues) {
+    $('#btn-view-report').addEventListener('click', () => openReportModal(v));
+  }
 }
 
-function renderIssuesTable(issues) {
-  // Group by type, show max 200
-  const limited = issues.slice(0, 200);
-  const rows = limited.map(iss => `
-    <tr>
-      <td class="row-num">${iss.row}</td>
-      <td><span class="type-tag ${iss.type}">${iss.type}</span></td>
-      <td>${iss.zone || '—'}</td>
-      <td>${iss.detail}</td>
-    </tr>
-  `).join('');
+/* ───────────────────────────────────────────────
+   Detailed Report Modal
+   ─────────────────────────────────────────────── */
+
+function openReportModal(v) {
+  const modal = $('#report-modal');
+  const body = $('#modal-body');
+  const issues = v.issues || [];
+
+  const shiftIssues = issues.filter(i => i.type === 'shift');
+  const numberIssues = issues.filter(i => i.type === 'number');
+  const warningIssues = issues.filter(i => i.type === 'warning');
+
+  // Sub-categorize shifts
+  const shipperShifts = shiftIssues.filter(i => (i.zone || '').includes('Shipper'));
+  const consigneeShifts = shiftIssues.filter(i => (i.zone || '').includes('Consignee'));
+  const midRowShifts = shiftIssues.filter(i => (i.zone || '') === 'Mid-row');
+  const goodsShifts = shiftIssues.filter(i => (i.zone || '') === 'Goods');
+  const otherShifts = shiftIssues.filter(i =>
+    !(i.zone || '').includes('Shipper') &&
+    !(i.zone || '').includes('Consignee') &&
+    (i.zone || '') !== 'Mid-row' &&
+    (i.zone || '') !== 'Goods'
+  );
+
+  body.innerHTML = `
+    ${renderSummaryBar(v)}
+    ${shiftIssues.length > 0 ? renderShiftSection(shipperShifts, consigneeShifts, midRowShifts, goodsShifts, otherShifts) : ''}
+    ${numberIssues.length > 0 ? renderNumberSection(numberIssues) : ''}
+    ${warningIssues.length > 0 ? renderWarningSection(warningIssues) : ''}
+  `;
+
+  // Attach section toggles
+  body.querySelectorAll('.report-section-header').forEach(header => {
+    header.addEventListener('click', () => {
+      header.classList.toggle('open');
+      const sBody = header.nextElementSibling;
+      if (sBody) sBody.classList.toggle('open');
+    });
+  });
+
+  modal.classList.add('active');
+}
+
+function closeReportModal() {
+  $('#report-modal').classList.remove('active');
+}
+
+function renderSummaryBar(v) {
+  const issues = v.issues || [];
+  const warnCount = issues.filter(i => i.type === 'warning').length;
+  const shiftRows = new Set(issues.filter(i => i.type === 'shift').map(i => i.row)).size;
 
   return `
-    <div class="validation-table-wrapper">
-      <table class="validation-table">
-        <thead><tr><th>Row</th><th>Type</th><th>Zone</th><th>Detail</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="report-summary-bar">
+      <div class="report-summary-stat">
+        <div class="stat-num shift">${v.shiftFixes || 0}</div>
+        <div class="stat-label">Shift Fixes</div>
+      </div>
+      <div class="report-summary-stat">
+        <div class="stat-num">${shiftRows}</div>
+        <div class="stat-label">Rows Shifted</div>
+      </div>
+      <div class="report-summary-stat">
+        <div class="stat-num number">${(v.numberFixes || 0).toLocaleString()}</div>
+        <div class="stat-label">Number Fixes</div>
+      </div>
+      <div class="report-summary-stat">
+        <div class="stat-num ${warnCount > 0 ? 'warn' : 'clean'}">${warnCount}</div>
+        <div class="stat-label">Warnings</div>
+      </div>
+      <div class="report-summary-stat">
+        <div class="stat-num clean">${v.totalIssues || 0}</div>
+        <div class="stat-label">Total Corrections</div>
+      </div>
     </div>
-    ${issues.length > 200 ? `<div style="padding:10px 16px;font-size:0.75rem;color:var(--text-muted)">Showing 200 of ${issues.length} issues</div>` : ''}
   `;
+}
+
+function renderShiftSection(shipperShifts, consigneeShifts, midRowShifts, goodsShifts, otherShifts) {
+  const total = shipperShifts.length + consigneeShifts.length + midRowShifts.length + goodsShifts.length + otherShifts.length;
+
+  let subsections = '';
+
+  if (shipperShifts.length > 0) {
+    subsections += `
+      <div class="report-subsection">
+        <div class="report-subsection-title">
+          Shipper Address Overflow <span class="sub-count">${shipperShifts.length}</span>
+        </div>
+        <div class="report-subsection-desc" style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">
+          The shipper address field overflowed into adjacent columns, pushing Town/Postcode/Country right. Merged address fragments and realigned the row.
+        </div>
+        ${renderIssuesList(shipperShifts)}
+      </div>
+    `;
+  }
+
+  if (consigneeShifts.length > 0) {
+    subsections += `
+      <div class="report-subsection">
+        <div class="report-subsection-title">
+          Consignee Address Overflow <span class="sub-count">${consigneeShifts.length}</span>
+        </div>
+        <div class="report-subsection-desc" style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">
+          The consignee address overflowed into adjacent columns. Merged fragments and shifted subsequent columns back into alignment.
+        </div>
+        ${renderIssuesList(consigneeShifts)}
+      </div>
+    `;
+  }
+
+  if (midRowShifts.length > 0) {
+    subsections += `
+      <div class="report-subsection">
+        <div class="report-subsection-title">
+          Delivery Location Overflow <span class="sub-count">${midRowShifts.length}</span>
+        </div>
+        <div class="report-subsection-desc" style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">
+          The delivery location field (col 32) overflowed, pushing freight, weight, and all downstream columns right. Merged location text and realigned the entire row.
+        </div>
+        ${renderIssuesList(midRowShifts)}
+      </div>
+    `;
+  }
+
+  if (goodsShifts.length > 0) {
+    subsections += `
+      <div class="report-subsection">
+        <div class="report-subsection-title">
+          Goods Description Overflow <span class="sub-count">${goodsShifts.length}</span>
+        </div>
+        <div class="report-subsection-desc" style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">
+          The goods description spanned multiple cells, pushing HS Code, Country of Origin, and other fields right. Merged description fragments and realigned HS Code to col 110.
+        </div>
+        ${renderIssuesList(goodsShifts)}
+      </div>
+    `;
+  }
+
+  if (otherShifts.length > 0) {
+    subsections += `
+      <div class="report-subsection">
+        <div class="report-subsection-title">
+          Other Shifts <span class="sub-count">${otherShifts.length}</span>
+        </div>
+        ${renderIssuesList(otherShifts)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="report-section">
+      <div class="report-section-header">
+        <div class="section-icon shift-icon">${IC.shift}</div>
+        <div class="section-title-text">Column Shift Repairs</div>
+        <div class="section-count">${total} fix${total !== 1 ? 'es' : ''}</div>
+        <svg class="section-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="report-section-body">
+        ${subsections}
+      </div>
+    </div>
+  `;
+}
+
+function renderNumberSection(numberIssues) {
+  // Group by column for better organization
+  const byCol = {};
+  for (const iss of numberIssues) {
+    const colMatch = (iss.detail || '').match(/Col (\d+)/);
+    const col = colMatch ? `Col ${colMatch[1]}` : 'Other';
+    if (!byCol[col]) byCol[col] = [];
+    byCol[col].push(iss);
+  }
+
+  const colEntries = Object.entries(byCol).sort((a, b) => a[1].length - b[1].length);
+  const MAX_DISPLAY = 50;
+  let displayed = 0;
+
+  let subsections = '';
+  for (const [col, items] of colEntries) {
+    const remaining = MAX_DISPLAY - displayed;
+    if (remaining <= 0) break;
+    const toShow = items.slice(0, remaining);
+    displayed += toShow.length;
+    subsections += `
+      <div class="report-subsection">
+        <div class="report-subsection-title">
+          ${col} <span class="sub-count">${items.length} fix${items.length !== 1 ? 'es' : ''}</span>
+        </div>
+        ${renderIssuesList(toShow)}
+        ${items.length > toShow.length ? `<div style="font-size:0.72rem;color:var(--text-dim);padding-top:4px">… and ${items.length - toShow.length} more in this column</div>` : ''}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="report-section">
+      <div class="report-section-header">
+        <div class="section-icon number-icon">${IC.hash}</div>
+        <div class="section-title-text">Number Format Corrections</div>
+        <div class="section-count">${numberIssues.length.toLocaleString()} fix${numberIssues.length !== 1 ? 'es' : ''}</div>
+        <svg class="section-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="report-section-body">
+        <div class="report-subsection">
+          <div class="report-subsection-desc" style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">
+            European number formats (comma decimal separator, leading comma/dot) were converted to standard decimal format. Affected ${Object.keys(byCol).length} column${Object.keys(byCol).length !== 1 ? 's' : ''}.
+          </div>
+        </div>
+        ${subsections}
+        ${numberIssues.length > MAX_DISPLAY ? `<div style="padding:12px 16px;font-size:0.72rem;color:var(--text-dim)">Showing ${MAX_DISPLAY} of ${numberIssues.length.toLocaleString()} number fixes. All corrections applied successfully.</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderWarningSection(warningIssues) {
+  return `
+    <div class="report-section">
+      <div class="report-section-header open">
+        <div class="section-icon warn-icon">${IC.alert}</div>
+        <div class="section-title-text">Warnings — Manual Review Recommended</div>
+        <div class="section-count">${warningIssues.length}</div>
+        <svg class="section-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="report-section-body open">
+        <div class="report-subsection">
+          <div class="report-subsection-desc" style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px">
+            These issues could not be automatically corrected. Please review the affected rows in the output file.
+          </div>
+          ${renderIssuesList(warningIssues)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderIssuesList(issues) {
+  return issues.map(iss => {
+    // Format the detail nicely — highlight values in code tags
+    let detail = iss.detail || '';
+    detail = detail.replace(/"([^"]*)"/g, '<code>$1</code>');
+    detail = detail.replace(/→/g, ' → ');
+
+    return `
+      <div class="report-issue">
+        <span class="issue-row">Row ${iss.row}</span>
+        <span class="issue-detail">${detail}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderFileBreakdown(stats) {
@@ -433,6 +688,17 @@ function init() {
     uploadedFiles = [];
     mergedResult = null;
     showView('broker');
+  });
+
+  // Modal close
+  $('#modal-close').addEventListener('click', closeReportModal);
+  $('#report-modal').addEventListener('click', (e) => {
+    if (e.target === $('#report-modal')) closeReportModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('#report-modal').classList.contains('active')) {
+      closeReportModal();
+    }
   });
 }
 
