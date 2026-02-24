@@ -17,12 +17,12 @@ export const BROKERS = [
       <path d="M10 13h14l-3 4H7l3-4zm0 14h14l3-4H13l-3 4zm17-14h14l-10 14H17l10-14zm17 0h18l-3 4H47l3-4zm-3 14h18l3-4H44l-3 4zm6-10h14l-7 10H47l7-10zm20-4h18l-3 4H70l3-4zm-3 14h18l3-4H70l-3 4zm6-10h17v10H76l7-10z" fill="#D40511"/>
     </svg>`,
     capabilities: [
-      { icon: '🔀', text: 'Fixes shifted address columns (shipper & consignee overflow)' },
+      { icon: '🔀', text: 'Fixes shifted columns' },
       { icon: '📦', text: 'Fixes shifted goods description columns (HS code realignment)' },
       { icon: '📍', text: 'Fixes mid-row delivery location overflow (freight column repair)' },
-      { icon: '🔢', text: 'Converts European number formats (comma → dot decimal)' },
+      { icon: '🔢', text: 'Converts number formats (comma → dot decimal)' },
       { icon: '✅', text: 'Validates HS codes (8–11 digits) and country codes (2-letter ISO)' },
-      { icon: '📄', text: 'Supports 137-column layout with 2 header rows' },
+      { icon: '📄', text: 'Supports layout with 2 header rows' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 3) return true;
@@ -46,10 +46,9 @@ export const BROKERS = [
     </svg>`,
     capabilities: [
       { icon: '🧹', text: 'Cleans trailing newlines and whitespace from all text fields' },
-      { icon: '🔢', text: 'Converts European number formats (comma → dot decimal)' },
-      { icon: '🔄', text: 'Converts text-formatted numbers to proper numeric values (20 columns)' },
-      { icon: '✅', text: 'Validates HS codes and country codes (sending & origin)' },
-      { icon: '📄', text: 'Supports 91-column layout with header at row 14' },
+      { icon: '🔢', text: 'Converts number formats (comma → dot decimal)' },
+      { icon: '🔄', text: 'Converts text-formatted numbers to proper numeric values' },
+      { icon: '✅', text: 'Validates HS codes and country codes' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 3) return true;
@@ -95,11 +94,11 @@ export const BROKERS = [
       <text x="28" y="28" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="#FFFFFF">DSV</text>
     </svg>`,
     capabilities: [
-      { icon: '🔢', text: 'Converts European number formats (comma → dot decimal)' },
-      { icon: '🔄', text: 'Converts text-formatted numbers to proper numeric values (50+ columns)' },
+      { icon: '🔢', text: 'Converts number formats (comma → dot decimal)' },
+      { icon: '🔄', text: 'Converts text-formatted numbers to proper numeric values' },
       { icon: '📅', text: 'Converts Excel serial dates to readable DD.MM.YYYY format' },
       { icon: '⏰', text: 'Converts Excel serial times and datetimes to HH:MM format' },
-      { icon: '🔗', text: 'Aligns different column layouts across months (92 → 158 cols)' },
+      { icon: '🔗', text: 'Aligns different column layouts across months' },
       { icon: '📄', text: 'Supports CSV (semicolon-separated) and XLSX files with multi-sheet selection' },
     ],
     /**
@@ -202,11 +201,11 @@ export const BROKERS = [
     </svg>`,
     capabilities: [
       { icon: '🧹', text: 'Cleans trailing newlines and whitespace from all text fields' },
-      { icon: '🔢', text: 'Converts European number formats (comma → dot decimal)' },
+      { icon: '🔢', text: 'Converts number formats (comma → dot decimal)' },
       { icon: '🔄', text: 'Converts text-formatted numbers to proper numeric values (23 columns)' },
       { icon: '✂️', text: 'Trims unused trailing empty columns automatically' },
       { icon: '✅', text: 'Validates HS codes and country codes (4 country columns)' },
-      { icon: '📄', text: 'Supports 65-column layout — identical across all monthly files' },
+      
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
