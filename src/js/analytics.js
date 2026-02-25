@@ -398,7 +398,10 @@ export function aggregateData(headers, data, brokerId) {
     // Apply correction: monetary ÷100, mass ÷1000000.
     let integerCentsRow = false;
     let weightVal = toNum(getField(row, 'weight', colMap) ?? getField(row, 'grossWeight', colMap) ?? getField(row, 'netWeight', colMap));
-    let invoiceVal = toNum(getField(row, 'invoiceValue', colMap));
+    // Prefer line-level invoice (e.g. FedEx RECHNUNGSPREIS2 col 66) over
+    // header-level invoice (FedEx RECHNUNGSPREIS col 22) which may be
+    // repeated across multi-line declarations and would over-count totals.
+    let invoiceVal = toNum(getField(row, 'lineInvoice', colMap) ?? getField(row, 'invoiceValue', colMap));
     let invoiceEURVal = toNum(getField(row, 'invoiceEUR', colMap));
 
     if (brokerId === 'DSV' && weightVal != null && weightVal > 100000
@@ -435,7 +438,7 @@ export function aggregateData(headers, data, brokerId) {
       vatAmount:         vatAmt,
       eustRate:          toNum(getField(row, 'eustRate', colMap)),
       totalDutiesVAT:    centsAdj(toNum(getField(row, 'totalDutiesVAT', colMap)), integerCentsRow),
-      freight:           centsAdj(toNum(getField(row, 'freight', colMap) ?? getField(row, 'freightCost', colMap) ?? getField(row, 'freightAmount', colMap) ?? getField(row, 'freightEUR', colMap) ?? getField(row, 'euFreight', colMap)), integerCentsRow),
+      freight:           centsAdj(toNum(getField(row, 'freight', colMap) ?? getField(row, 'freightCost', colMap) ?? getField(row, 'euFreight', colMap) ?? getField(row, 'freightEUR', colMap) ?? getField(row, 'freightAmount', colMap)), integerCentsRow),
       weight:            weightVal,
       netWeight:         massAdj(toNum(getField(row, 'netWeight', colMap)), integerCentsRow),
       packageCount:      toNum(getField(row, 'packageCount', colMap) ?? getField(row, 'pieces', colMap)),
@@ -785,6 +788,7 @@ function computeHSChapters(records) {
     if (!byChapter[r.hsChapter]) byChapter[r.hsChapter] = { chapter: r.hsChapter, count: 0, totalInvoice: 0, totalDuty: 0, descriptions: new Set() };
     byChapter[r.hsChapter].count++;
     if (r.invoiceValue != null && r.invoiceValue > 0) byChapter[r.hsChapter].totalInvoice += r.invoiceValue;
+    else if (r.invoiceEUR != null && r.invoiceEUR > 0) byChapter[r.hsChapter].totalInvoice += r.invoiceEUR;
     if (r.dutyAmount != null) byChapter[r.hsChapter].totalDuty += r.dutyAmount;
     if (r.description) {
       // Keep max 3 unique description samples

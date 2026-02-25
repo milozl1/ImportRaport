@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Column Map — Import Report</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+/* ═══════════════════════════════════════════════
+   Column Map — Premium Dark Theme (matches main app)
+   ═══════════════════════════════════════════════ */
+
+:root {
+  --bg:            #06080d;
+  --bg-card:       rgba(15, 20, 35, 0.85);
+  --bg-card-hover: rgba(20, 28, 50, 0.95);
+  --bg-glass:      rgba(255, 255, 255, 0.04);
+  --surface:       #0d1117;
+  --surface-2:     #161b22;
+  --border:        rgba(255, 255, 255, 0.06);
+  --border-hover:  rgba(255, 255, 255, 0.12);
+  --text:          #e6edf3;
+  --text-muted:    #8b949e;
+  --text-dim:      #484f58;
+  --accent:        #58a6ff;
+  --accent-glow:   rgba(88, 166, 255, 0.15);
+  --success:       #3fb950;
+  --warning:       #d29922;
+  --danger:        #f85149;
+  --radius:        12px;
+  --radius-sm:     8px;
+  --radius-xs:     6px;
+  --shadow:        0 8px 32px rgba(0, 0, 0, 0.4);
+  --transition:    0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --font:          'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
+
+  /* Broker colors */
+  --dhl:           #FFCC00;
+  --dhl-text:      #CC0000;
+  --fedex:         #4D148C;
+  --fedex-accent:  #FF6600;
+  --ups:           #351C15;
+  --ups-accent:    #FFB500;
+  --dsv:           #002B5C;
+  --dsv-accent:    #0077C8;
+  --kn:            #003A70;
+  --kn-accent:     #0075BE;
+  --schenker:      #EC0016;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(88, 166, 255, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 100%, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Topbar ─── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 32px; height: 60px;
+  background: rgba(6, 8, 13, 0.8);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+.topbar .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.topbar .logo svg { width: 22px; height: 22px; color: var(--accent); }
+.topbar .logo span { font-weight: 700; font-size: 1.1rem; }
+.text-gradient { background: linear-gradient(135deg, var(--accent), #a78bfa); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.topbar .spacer { flex: 1; }
+.back-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: var(--radius-xs);
+  background: var(--bg-glass); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 0.85rem; cursor: pointer;
+  transition: var(--transition); text-decoration: none;
+}
+.back-btn:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--border-hover); }
+.back-btn svg { width: 16px; height: 16px; }
+
+/* ─── Main ─── */
+.main { position: relative; z-index: 1; max-width: 1600px; margin: 0 auto; padding: 32px; }
+
+/* ─── Page Header ─── */
+.page-header { text-align: center; margin-bottom: 32px; }
+.page-header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+.page-header p { color: var(--text-muted); font-size: 1rem; max-width: 700px; margin: 0 auto; }
+
+/* ─── Controls ─── */
+.controls {
+  display: flex; justify-content: center; gap: 8px;
+  flex-wrap: wrap; margin-bottom: 28px;
+}
+.ctrl-btn {
+  padding: 8px 18px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--bg-glass);
+  color: var(--text-muted); font-size: 0.85rem; font-weight: 500;
+  cursor: pointer; transition: var(--transition);
+  display: flex; align-items: center; gap: 6px;
+}
+.ctrl-btn:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--border-hover); }
+.ctrl-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+.ctrl-btn .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* ─── Search ─── */
+.search-bar {
+  display: flex; justify-content: center; margin-bottom: 28px;
+}
+.search-input {
+  width: 100%; max-width: 500px; padding: 10px 16px 10px 40px;
+  border-radius: 20px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text);
+  font-size: 0.9rem; outline: none; transition: var(--transition);
+}
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.search-wrap { position: relative; width: 100%; max-width: 500px; }
+.search-wrap svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--text-dim); pointer-events: none;
+}
+
+/* ─── Legend ─── */
+.legend {
+  display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
+  margin-bottom: 32px; padding: 14px 20px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); }
+.legend-line { width: 32px; height: 3px; border-radius: 2px; }
+.legend-line.financial { background: linear-gradient(90deg, #f0883e, #ffa657); }
+.legend-line.identity { background: linear-gradient(90deg, #58a6ff, #79c0ff); }
+.legend-line.goods { background: linear-gradient(90deg, #3fb950, #56d364); }
+.legend-line.logistics { background: linear-gradient(90deg, #a78bfa, #d2a8ff); }
+.legend-line.parties { background: linear-gradient(90deg, #f778ba, #ff9bce); }
+
+/* ─── Map Container ─── */
+.map-container { position: relative; }
+.map-svg {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 2;
+}
+.map-svg path {
+  fill: none; stroke-width: 1.5; opacity: 0.45;
+  transition: opacity 0.3s, stroke-width 0.3s;
+}
+.map-svg path.highlight { opacity: 1; stroke-width: 2.5; }
+.map-svg path.dim { opacity: 0.08; }
+
+/* ─── Broker Columns ─── */
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  gap: 20px;
+  position: relative;
+  z-index: 3;
+}
+
+.broker-col {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: var(--transition);
+}
+.broker-col:hover { border-color: var(--border-hover); }
+
+.broker-col-header {
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600; font-size: 0.95rem;
+}
+.broker-col-header .broker-badge {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.broker-col-header .col-count {
+  margin-left: auto; font-size: 0.75rem;
+  color: var(--text-muted); font-weight: 400;
+}
+
+.col-list { padding: 6px 0; max-height: 600px; overflow-y: auto; }
+.col-list::-webkit-scrollbar { width: 4px; }
+.col-list::-webkit-scrollbar-track { background: transparent; }
+.col-list::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
+
+.col-item {
+  padding: 6px 14px; display: flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; cursor: pointer; transition: var(--transition);
+  border-left: 3px solid transparent;
+}
+.col-item:hover { background: var(--bg-card-hover); }
+.col-item.highlight { background: var(--accent-glow); border-left-color: var(--accent); }
+.col-item.dim { opacity: 0.2; }
+.col-item.hidden { display: none; }
+
+.col-item .col-idx {
+  font-family: var(--font-mono); font-size: 0.7rem;
+  color: var(--text-dim); min-width: 28px;
+}
+.col-item .col-name { flex: 1; color: var(--text-muted); }
+.col-item:hover .col-name { color: var(--text); }
+.col-item.highlight .col-name { color: var(--text); font-weight: 500; }
+
+.col-item .cat-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.cat-dot.financial { background: #f0883e; }
+.cat-dot.identity { background: #58a6ff; }
+.cat-dot.goods { background: #3fb950; }
+.cat-dot.logistics { background: #a78bfa; }
+.cat-dot.parties { background: #f778ba; }
+.cat-dot.other { background: var(--text-dim); }
+
+/* ─── Central Unified Column ─── */
+.broker-col.unified {
+  background: rgba(88, 166, 255, 0.04);
+  border-color: rgba(88, 166, 255, 0.15);
+}
+.broker-col.unified .broker-col-header {
+  background: rgba(88, 166, 255, 0.06);
+}
+.broker-col.unified .col-item {
+  border-left-color: transparent;
+}
+.broker-col.unified .col-item.highlight {
+  border-left-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+/* ─── Section Dividers ─── */
+.section-divider {
+  padding: 6px 14px; font-size: 0.7rem; font-weight: 600;
+  color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: 0.05em; border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.section-divider:first-child { border-top: none; margin-top: 0; }
+
+/* ─── Tooltip ─── */
+.map-tooltip {
+  position: fixed; z-index: 1000;
+  background: var(--surface-2); border: 1px solid var(--border-hover);
+  border-radius: var(--radius-xs); padding: 10px 14px;
+  font-size: 0.8rem; max-width: 320px;
+  box-shadow: var(--shadow); pointer-events: none;
+  opacity: 0; transition: opacity 0.15s;
+}
+.map-tooltip.visible { opacity: 1; }
+.map-tooltip .tt-field { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+.map-tooltip .tt-mapping { color: var(--text-muted); font-size: 0.75rem; }
+.map-tooltip .tt-mapping span { color: var(--text); }
+.map-tooltip .tt-cat { margin-top: 4px; font-size: 0.7rem; color: var(--text-dim); }
+
+/* ─── Empty state ─── */
+.no-results {
+  text-align: center; padding: 40px; color: var(--text-muted);
+  font-size: 0.9rem; display: none;
+}
+.no-results.visible { display: block; }
+
+/* ─── Stats bar ─── */
+.stats-bar {
+  display: flex; justify-content: center; gap: 32px; flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.stat-item { text-align: center; }
+.stat-val { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ─── Category filter colors ─── */
+.ctrl-btn[data-cat="financial"] .dot { background: #f0883e; }
+.ctrl-btn[data-cat="identity"] .dot { background: #58a6ff; }
+.ctrl-btn[data-cat="goods"] .dot { background: #3fb950; }
+.ctrl-btn[data-cat="logistics"] .dot { background: #a78bfa; }
+.ctrl-btn[data-cat="parties"] .dot { background: #f778ba; }
+
+/* ─── Responsive ─── */
+@media (max-width: 1200px) {
+  .map-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .map-grid { grid-template-columns: 1fr; }
+  .main { padding: 16px; }
+  .controls { gap: 6px; }
+}
+
+/* ─── Details Panel ─── */
+.details-panel {
+  margin-top: 40px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.details-panel-header {
+  padding: 16px 20px; font-weight: 600; font-size: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.details-panel-header svg { width: 18px; height: 18px; color: var(--accent); }
+.details-table {
+  width: 100%; border-collapse: collapse;
+}
+.details-table th {
+  padding: 10px 16px; text-align: left;
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--bg-glass); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+}
+.details-table td {
+  padding: 8px 16px; font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.details-table tr:hover td { background: var(--bg-card-hover); color: var(--text); }
+.details-table .broker-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.7rem; font-weight: 600;
+}
+.details-table-wrap { max-height: 500px; overflow-y: auto; }
+.details-table-wrap::-webkit-scrollbar { width: 4px; }
+.details-table-wrap::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
+
+/* ─── Mode toggle ─── */
+.mode-toggle {
+  display: flex; justify-content: center; gap: 4px;
+  margin-bottom: 20px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px; width: fit-content; margin-inline: auto;
+}
+.mode-btn {
+  padding: 6px 18px; border-radius: 16px; border: none;
+  background: transparent; color: var(--text-muted);
+  font-size: 0.85rem; font-weight: 500; cursor: pointer;
+  transition: var(--transition);
+}
+.mode-btn.active { background: var(--accent-glow); color: var(--accent); }
+.mode-btn:hover:not(.active) { color: var(--text); }
+
+/* ─── Flow view ─── */
+.flow-view { display: none; }
+.flow-view.active { display: block; }
+.grid-view { display: none; }
+.grid-view.active { display: block; }
+
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <a href="index.html" class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/><circle cx="12" cy="14" r="1"/></svg>
+      <span class="text-gradient">Import Report</span>
+    </a>
+    <div class="spacer"></div>
+    <a href="index.html" class="back-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to App
+    </a>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1>🗺️ Column Mapping</h1>
+      <p>Vizualizare interactivă a modului în care coloanele fiecărui broker sunt mapate către câmpurile unificate ale raportului final</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="stats-bar"></div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" data-mode="grid">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Grid View
+      </button>
+      <button class="mode-btn" data-mode="table">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        Table View
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <div class="search-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" id="search" placeholder="Search columns… (e.g. HS Code, freight, country)" />
+      </div>
+    </div>
+
+    <!-- Category filters -->
+    <div class="controls" id="cat-filters">
+      <button class="ctrl-btn active" data-cat="all">All Categories</button>
+      <button class="ctrl-btn" data-cat="financial"><span class="dot"></span> Financial</button>
+      <button class="ctrl-btn" data-cat="identity"><span class="dot"></span> Identity</button>
+      <button class="ctrl-btn" data-cat="goods"><span class="dot"></span> Goods</button>
+      <button class="ctrl-btn" data-cat="logistics"><span class="dot"></span> Logistics</button>
+      <button class="ctrl-btn" data-cat="parties"><span class="dot"></span> Parties</button>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item"><span class="legend-line financial"></span> Financial (invoice, duty, VAT, freight)</div>
+      <div class="legend-item"><span class="legend-line identity"></span> Identity (declaration no, EORI, date)</div>
+      <div class="legend-item"><span class="legend-line goods"></span> Goods (HS code, description, origin)</div>
+      <div class="legend-item"><span class="legend-line logistics"></span> Logistics (weight, incoterm, packages)</div>
+      <div class="legend-item"><span class="legend-line parties"></span> Parties (shipper, consignee, broker)</div>
+    </div>
+
+    <!-- ═══ GRID VIEW ═══ -->
+    <div class="grid-view active" id="grid-view">
+      <div class="map-container">
+        <svg class="map-svg" id="map-svg"></svg>
+        <div class="map-grid" id="map-grid"></div>
+      </div>
+      <div class="no-results" id="no-results">No columns match your search</div>
+    </div>
+
+    <!-- ═══ TABLE VIEW ═══ -->
+    <div class="flow-view" id="table-view">
+      <div class="details-panel">
+        <div class="details-panel-header">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          Complete Column Mapping Reference
+        </div>
+        <div class="details-table-wrap" style="max-height: none;">
+          <table class="details-table" id="details-table">
+            <thead><tr>
+              <th>Unified Field</th>
+              <th>Category</th>
+              <th>DHL</th>
+              <th>FedEx</th>
+              <th>UPS</th>
+              <th>DSV</th>
+            </tr></thead>
+            <tbody id="details-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Tooltip -->
+  <div class="map-tooltip" id="tooltip">
+    <div class="tt-field" id="tt-field"></div>
+    <div class="tt-mapping" id="tt-mapping"></div>
+    <div class="tt-cat" id="tt-cat"></div>
+  </div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   Column Mapping Data — Single Source of Truth
+   ═══════════════════════════════════════════════ */
+
+const UNIFIED_FIELDS = [
+  // ── Identity
+  { field: 'date',             label: 'Date',                  cat: 'identity' },
+  { field: 'declarationNo',    label: 'Declaration No.',       cat: 'identity' },
+  // ── Parties
+  { field: 'shipperName',      label: 'Shipper Name',          cat: 'parties' },
+  { field: 'shipperCountry',   label: 'Shipper Country',       cat: 'parties' },
+  { field: 'consigneeName',    label: 'Consignee Name',        cat: 'parties' },
+  { field: 'consigneeCountry', label: 'Consignee Country',     cat: 'parties' },
+  // ── Goods
+  { field: 'description',      label: 'Description of Goods',  cat: 'goods' },
+  { field: 'hsCode',           label: 'HS Code',               cat: 'goods' },
+  { field: 'countryOfOrigin',  label: 'Country of Origin',     cat: 'goods' },
+  { field: 'procedureCode',    label: 'Procedure Code',        cat: 'goods' },
+  // ── Financial
+  { field: 'invoiceValue',     label: 'Invoice Value',         cat: 'financial' },
+  { field: 'lineInvoice',      label: 'Line Invoice',          cat: 'financial' },
+  { field: 'currency',         label: 'Currency',              cat: 'financial' },
+  { field: 'exchangeRate',     label: 'Exchange Rate',         cat: 'financial' },
+  { field: 'invoiceEUR',       label: 'Invoice EUR',           cat: 'financial' },
+  { field: 'customsValue',     label: 'Customs Value',         cat: 'financial' },
+  { field: 'dutyBasis',        label: 'Duty Basis',            cat: 'financial' },
+  { field: 'duty',             label: 'Duty Amount',           cat: 'financial' },
+  { field: 'dutyAmount',       label: 'Duty Amount (alt)',     cat: 'financial' },
+  { field: 'dutyRate',         label: 'Duty Rate',             cat: 'financial' },
+  { field: 'vatAmount',        label: 'VAT Amount',            cat: 'financial' },
+  { field: 'vat',              label: 'VAT (summary)',         cat: 'financial' },
+  { field: 'eustValue',        label: 'EUSt Value',            cat: 'financial' },
+  { field: 'eustAmount',       label: 'EUSt Amount',           cat: 'financial' },
+  { field: 'eustRate',         label: 'EUSt Rate',             cat: 'financial' },
+  { field: 'customsDuties',    label: 'Customs Duties',        cat: 'financial' },
+  { field: 'importDuties',     label: 'Import Duties',         cat: 'financial' },
+  { field: 'totalDutiesVAT',   label: 'Total Duties + VAT',    cat: 'financial' },
+  { field: 'articlePrice',     label: 'Article Price',         cat: 'financial' },
+  { field: 'statisticalValue', label: 'Statistical Value',     cat: 'financial' },
+  { field: 'freightCost',      label: 'Freight Cost',          cat: 'financial' },
+  { field: 'freight',          label: 'Freight EUR',           cat: 'financial' },
+  { field: 'freightAmount',    label: 'Freight Amount',        cat: 'financial' },
+  { field: 'freightEUR',       label: 'Freight EUR (alt)',     cat: 'financial' },
+  { field: 'euFreight',        label: 'EU Freight',            cat: 'financial' },
+  // ── Logistics
+  { field: 'incoterm',         label: 'Incoterm',              cat: 'logistics' },
+  { field: 'deliveryPlace',    label: 'Delivery Place',        cat: 'logistics' },
+  { field: 'weight',           label: 'Weight (kg)',           cat: 'logistics' },
+  { field: 'grossWeight',      label: 'Gross Weight',          cat: 'logistics' },
+  { field: 'netWeight',        label: 'Net Weight',            cat: 'logistics' },
+  { field: 'pieces',           label: 'Pieces',                cat: 'logistics' },
+  { field: 'packageCount',     label: 'Package Count',         cat: 'logistics' },
+  { field: 'container',        label: 'Container',             cat: 'logistics' },
+  // ── Identity (cont.)
+  { field: 'awb',              label: 'AWB / Waybill',         cat: 'identity' },
+  { field: 'senderName',       label: 'Sender Name',           cat: 'parties' },
+  { field: 'senderCountry',    label: 'Sender Country',        cat: 'parties' },
+  { field: 'sellerCountry',    label: 'Seller Country',        cat: 'parties' },
+  // ── DSV-specific financial
+  { field: 'customsDuty',      label: 'Customs Duty (DSV)',    cat: 'financial' },
+  { field: 'customsDutyRate',  label: 'Customs Duty Rate',     cat: 'financial' },
+];
+
+/** Broker → field → { col, colName, note } */
+const BROKER_MAP = {
+  DHL: {
+    date:             { col: 0,   colName: 'Date of Declaration' },
+    declarationNo:    { col: 4,   colName: 'Declaration Number' },
+    shipperName:      { col: 20,  colName: 'Shipper Name' },
+    shipperCountry:   { col: 24,  colName: 'Shipper Country' },
+    consigneeName:    { col: 26,  colName: 'Consignee Name' },
+    consigneeCountry: { col: 30,  colName: 'Consignee Country' },
+    incoterm:         { col: 31,  colName: 'Incoterm' },
+    freight:          { col: 33,  colName: 'Freight EUR' },
+    weight:           { col: 34,  colName: 'Weight (kg)' },
+    pieces:           { col: 35,  colName: 'Pieces' },
+    customsDuties:    { col: 67,  colName: 'Summary Customs Duties' },
+    vat:              { col: 71,  colName: 'Summary VAT' },
+    importDuties:     { col: 75,  colName: 'Summary Import Duties' },
+    totalDutiesVAT:   { col: 76,  colName: 'Summary Duties + VAT' },
+    description:      { col: 109, colName: 'Description of Goods' },
+    hsCode:           { col: 110, colName: 'HS Code' },
+    countryOfOrigin:  { col: 111, colName: 'Country of Origin' },
+    procedureCode:    { col: 113, colName: 'Procedure Code' },
+    invoiceValue:     { col: 117, colName: 'Invoice Value' },
+    currency:         { col: 118, colName: 'Currency' },
+    exchangeRate:     { col: 119, colName: 'Exchange Rate' },
+    dutyBasis:        { col: 120, colName: 'Duty Basis EUR' },
+    duty:             { col: 123, colName: 'Duty' },
+    vatAmount:        { col: 127, colName: 'VAT Amount' },
+  },
+  FEDEX: {
+    date:             { col: 7,   colName: 'DATUM', note: 'Excel serial date → needs conversion' },
+    declarationNo:    { col: 6,   colName: 'REGISTRIERNUMMER' },
+    awb:              { col: 5,   colName: 'AWB' },
+    shipperCountry:   { col: 21,  colName: 'VERSENDUNGSLAND' },
+    consigneeName:    { col: 15,  colName: 'NAME EMPFAENGER' },
+    incoterm:         { col: 31,  colName: 'LIEFERBEDINGUNG' },
+    deliveryPlace:    { col: 32,  colName: 'LIEFERORT' },
+    invoiceValue:     { col: 22,  colName: 'RECHNUNGSPREIS (header)', note: 'Header-level invoice — same for all lines' },
+    lineInvoice:      { col: 66,  colName: 'RECHNUNGSPREIS2 (line)', note: 'Line-level invoice — unique per position' },
+    currency:         { col: 23,  colName: 'WKZ' },
+    exchangeRate:     { col: 24,  colName: 'KURS' },
+    grossWeight:      { col: 27,  colName: 'GESAMTROHMASSE' },
+    packageCount:     { col: 61,  colName: 'PACKSTUECKE ANZAHL' },
+    hsCode:           { col: 56,  colName: 'TARIFNUMMER' },
+    countryOfOrigin:  { col: 57,  colName: 'URSPRUNGSLAND' },
+    procedureCode:    { col: 58,  colName: 'VERFAHRENSCODE' },
+    description:      { col: 64,  colName: 'WARENBESCHREIBUNG' },
+    netWeight:        { col: 65,  colName: 'EIGENMASSE' },
+    customsValue:     { col: 67,  colName: 'ZOLLWERT' },
+    eustValue:        { col: 68,  colName: 'EUSTWERT', note: 'VAT = eustValue × 19%' },
+    articlePrice:     { col: 70,  colName: 'ARTIKELPREIS' },
+    dutyRate:         { col: 85,  colName: 'ZOLLSATZ' },
+    freightCost:      { col: 86,  colName: 'FRACHTKOSTEN' },
+    dutyAmount:       { col: 91,  colName: 'ZOLL' },
+  },
+  UPS: {
+    date:             { col: 0,   colName: 'Datum der Zollanmeldung' },
+    invoiceValue:     { col: 8,   colName: 'Rechnungspreis' },
+    currency:         { col: 9,   colName: 'Waehrung' },
+    exchangeRate:     { col: 10,  colName: 'Kurs' },
+    invoiceEUR:       { col: 11,  colName: 'Rechnungspreis in Euro' },
+    packageCount:     { col: 15,  colName: 'Kolli-Anzahl' },
+    grossWeight:      { col: 16,  colName: 'Gesamt-Rohmasse' },
+    freightAmount:    { col: 17,  colName: 'Frachtbetrag (lt. Frachtbrief)', note: 'Original currency' },
+    freightEUR:       { col: 20,  colName: 'Frachtbetrag in Euro' },
+    shipperCountry:   { col: 23,  colName: 'Versendungsland' },
+    countryOfOrigin:  { col: 24,  colName: 'Ursprungsland' },
+    hsCode:           { col: 28,  colName: 'Zolltarifnummer' },
+    description:      { col: 29,  colName: 'Warenbeschreibung' },
+    dutyRate:         { col: 30,  colName: 'Zollsatz' },
+    customsValue:     { col: 31,  colName: 'Zollwert' },
+    dutyAmount:       { col: 32,  colName: 'Zoll (Betrag in Euro)' },
+    eustRate:         { col: 38,  colName: 'EUSt-Satz' },
+    eustValue:        { col: 39,  colName: 'EUSt-Wert' },
+    eustAmount:       { col: 40,  colName: 'EUSt-Betrag' },
+    senderName:       { col: 41,  colName: 'Versendername' },
+    senderCountry:    { col: 42,  colName: 'Land (sender)' },
+    sellerCountry:    { col: 44,  colName: 'Land4 (seller)' },
+    incoterm:         { col: 45,  colName: 'Lieferbedingungsschluessel' },
+    euFreight:        { col: 47,  colName: 'Anteilige Frachtkosten bis EU-Grenze', note: 'EUR — preferred for analytics' },
+  },
+  DSV: {
+    date:             { col: '—', colName: 'Anlagedatum / Entry Date', note: 'Header-based: resolved at runtime' },
+    declarationNo:    { col: '—', colName: 'Registriernummer/MRN / Formal Entry Number' },
+    shipperName:      { col: '—', colName: 'CZ Name / Supplier Name' },
+    shipperCountry:   { col: '—', colName: 'CZ Ländercode / Shipping Country' },
+    consigneeName:    { col: '—', colName: 'CN Name / Importer Name' },
+    consigneeCountry: { col: '—', colName: 'CN Ländercode / Declaration Country' },
+    incoterm:         { col: '—', colName: 'Liefercode / Incoterms' },
+    deliveryPlace:    { col: '—', colName: 'Lieferort' },
+    invoiceValue:     { col: '—', colName: 'Rechnungsbetrag / Invoice value' },
+    currency:         { col: '—', colName: 'Rechnungswährung / Invoice currency' },
+    exchangeRate:     { col: '—', colName: 'Rechnungskurs / Exchange Rate' },
+    hsCode:           { col: '—', colName: 'Warentarifnummer / HTS Code' },
+    description:      { col: '—', colName: 'Warenbezeichnung / Item Description' },
+    countryOfOrigin:  { col: '—', colName: 'Ursprung / Country of Origin' },
+    procedureCode:    { col: '—', colName: 'Verfahren', note: 'Uses 2nd occurrence (col > 40)' },
+    customsDuty:      { col: '—', colName: 'AbgabeZoll / Duty Paid' },
+    customsDutyRate:  { col: '—', colName: 'AbgabeZollsatz / Duty Rate %' },
+    eustAmount:       { col: '—', colName: 'AbgabeEust / VAT Paid' },
+    eustRate:         { col: '—', colName: 'AbgabeEustsatz / VAT Rate %' },
+    customsValue:     { col: '—', colName: 'Zollwert / Declared Value' },
+    articlePrice:     { col: '—', colName: 'Artikelpreis' },
+    grossWeight:      { col: '—', colName: 'Rohmasse / Gross Mass (in kg)' },
+    netWeight:        { col: '—', colName: 'Eigenmasse / Net Mass (in kg)' },
+    freightCost:      { col: '—', colName: 'DV1Frachtkosten / DV1Luftfrachtkosten' },
+    packageCount:     { col: '—', colName: 'AnzahlPackstücke' },
+    statisticalValue: { col: '—', colName: 'Statistischerwert' },
+    container:        { col: '—', colName: 'Container' },
+  },
+};
+
+const BROKER_META = {
+  DHL:   { label: 'DHL Express',    color: '#FFCC00', text: '#CC0000', totalCols: 137, type: 'Index-based' },
+  FEDEX: { label: 'FedEx',          color: '#4D148C', text: '#FF6600', totalCols: 92,  type: 'Index-based' },
+  UPS:   { label: 'UPS',            color: '#351C15', text: '#FFB500', totalCols: 65,  type: 'Index-based' },
+  DSV:   { label: 'DSV',            color: '#002B5C', text: '#0077C8', totalCols: '92–158', type: 'Header-based' },
+};
+
+const BROKER_ORDER = ['DHL', 'FEDEX', 'UPS', 'DSV'];
+
+const CAT_COLORS = {
+  financial: '#f0883e',
+  identity:  '#58a6ff',
+  goods:     '#3fb950',
+  logistics: '#a78bfa',
+  parties:   '#f778ba',
+  other:     '#484f58',
+};
+
+/* ═══════════════════════════════════════════════
+   Rendering
+   ═══════════════════════════════════════════════ */
+
+let activeCat = 'all';
+let activeField = null;
+
+function init() {
+  renderStats();
+  renderGrid();
+  renderDetailsTable();
+  bindEvents();
+}
+
+function renderStats() {
+  const bar = document.getElementById('stats-bar');
+  const totalBrokers = BROKER_ORDER.length;
+  const totalUnified = UNIFIED_FIELDS.length;
+  const totalMappings = BROKER_ORDER.reduce((sum, b) => sum + Object.keys(BROKER_MAP[b]).length, 0);
+  bar.innerHTML = `
+    <div class="stat-item"><div class="stat-val">${totalBrokers}</div><div class="stat-label">Brokers</div></div>
+    <div class="stat-item"><div class="stat-val">${totalUnified}</div><div class="stat-label">Unified Fields</div></div>
+    <div class="stat-item"><div class="stat-val">${totalMappings}</div><div class="stat-label">Column Mappings</div></div>
+    <div class="stat-item"><div class="stat-val">5</div><div class="stat-label">Categories</div></div>
+  `;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('map-grid');
+  grid.innerHTML = '';
+
+  // Group unified fields by category for sections
+  const catOrder = ['identity', 'parties', 'goods', 'financial', 'logistics'];
+  const catLabels = { identity: 'Identity', parties: 'Parties', goods: 'Goods', financial: 'Financial', logistics: 'Logistics' };
+
+  // Build broker columns
+  for (const brokerId of BROKER_ORDER) {
+    const meta = BROKER_META[brokerId];
+    const bMap = BROKER_MAP[brokerId];
+    const fields = Object.keys(bMap);
+
+    const col = document.createElement('div');
+    col.className = 'broker-col';
+    col.innerHTML = `
+      <div class="broker-col-header">
+        <span class="broker-badge" style="background: ${meta.color}"></span>
+        ${meta.label}
+        <span class="col-count">${fields.length} fields · ${meta.totalCols} cols · ${meta.type}</span>
+      </div>
+    `;
+
+    const list = document.createElement('div');
+    list.className = 'col-list';
+
+    // Group this broker's fields by category
+    for (const cat of catOrder) {
+      const catFields = UNIFIED_FIELDS.filter(uf => uf.cat === cat && bMap[uf.field]);
+      if (catFields.length === 0) continue;
+
+      const divider = document.createElement('div');
+      divider.className = 'section-divider';
+      divider.textContent = catLabels[cat];
+      list.appendChild(divider);
+
+      for (const uf of catFields) {
+        const mapping = bMap[uf.field];
+        const item = document.createElement('div');
+        item.className = 'col-item';
+        item.dataset.field = uf.field;
+        item.dataset.broker = brokerId;
+        item.dataset.cat = uf.cat;
+        item.innerHTML = `
+          <span class="col-idx">${mapping.col}</span>
+          <span class="col-name">${mapping.colName}</span>
+          <span class="cat-dot ${uf.cat}"></span>
+        `;
+        list.appendChild(item);
+      }
+    }
+
+    col.appendChild(list);
+    grid.appendChild(col);
+  }
+
+  // Central unified column
+  const uniCol = document.createElement('div');
+  uniCol.className = 'broker-col unified';
+  uniCol.innerHTML = `
+    <div class="broker-col-header">
+      <span class="broker-badge" style="background: var(--accent)"></span>
+      Unified Analytics
+      <span class="col-count">${UNIFIED_FIELDS.length} fields · Output</span>
+    </div>
+  `;
+  const uniList = document.createElement('div');
+  uniList.className = 'col-list';
+
+  for (const cat of catOrder) {
+    const catFields = UNIFIED_FIELDS.filter(uf => uf.cat === cat);
+    // Only show fields that at least one broker maps
+    const mappedFields = catFields.filter(uf => BROKER_ORDER.some(b => BROKER_MAP[b][uf.field]));
+    if (mappedFields.length === 0) continue;
+
+    const divider = document.createElement('div');
+    divider.className = 'section-divider';
+    divider.textContent = catLabels[cat];
+    uniList.appendChild(divider);
+
+    for (const uf of mappedFields) {
+      const brokerCount = BROKER_ORDER.filter(b => BROKER_MAP[b][uf.field]).length;
+      const item = document.createElement('div');
+      item.className = 'col-item';
+      item.dataset.field = uf.field;
+      item.dataset.broker = 'UNIFIED';
+      item.dataset.cat = uf.cat;
+      item.innerHTML = `
+        <span class="col-idx" style="color: var(--accent)">${brokerCount}×</span>
+        <span class="col-name">${uf.label}</span>
+        <span class="cat-dot ${uf.cat}"></span>
+      `;
+      uniList.appendChild(item);
+    }
+  }
+  uniCol.appendChild(uniList);
+
+  // Insert unified column in the middle (index 2)
+  if (grid.children.length >= 2) {
+    grid.insertBefore(uniCol, grid.children[2]);
+  } else {
+    grid.appendChild(uniCol);
+  }
+}
+
+function renderDetailsTable() {
+  const tbody = document.getElementById('details-body');
+  tbody.innerHTML = '';
+
+  for (const uf of UNIFIED_FIELDS) {
+    // Skip if no broker maps to this
+    const hasBroker = BROKER_ORDER.some(b => BROKER_MAP[b][uf.field]);
+    if (!hasBroker) continue;
+
+    const tr = document.createElement('tr');
+    tr.dataset.field = uf.field;
+    tr.dataset.cat = uf.cat;
+
+    const brokerCells = BROKER_ORDER.map(b => {
+      const m = BROKER_MAP[b][uf.field];
+      if (!m) return '<td style="color: var(--text-dim)">—</td>';
+      const note = m.note ? `<br><span style="font-size:0.68rem;color:var(--text-dim)">${m.note}</span>` : '';
+      const meta = BROKER_META[b];
+      return `<td>
+        <span class="broker-tag" style="background: ${meta.color}22; color: ${meta.text || meta.color}; border: 1px solid ${meta.color}44">col ${m.col}</span>
+        <span style="margin-left:6px">${m.colName}</span>
+        ${note}
+      </td>`;
+    }).join('');
+
+    tr.innerHTML = `
+      <td style="font-weight: 600; color: var(--text)">${uf.label}</td>
+      <td><span class="cat-dot ${uf.cat}" style="display:inline-block;vertical-align:middle;margin-right:4px"></span> ${uf.cat}</td>
+      ${brokerCells}
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SVG Connection Lines
+   ═══════════════════════════════════════════════ */
+
+function drawConnections(fieldName) {
+  const svg = document.getElementById('map-svg');
+  svg.innerHTML = '';
+
+  if (!fieldName) return;
+
+  const container = document.querySelector('.map-container');
+  const containerRect = container.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${containerRect.width} ${containerRect.height}`);
+  svg.style.height = containerRect.height + 'px';
+
+  // Find unified col-item
+  const unifiedItem = document.querySelector(`.broker-col.unified .col-item[data-field="${fieldName}"]`);
+  if (!unifiedItem) return;
+  const uniRect = unifiedItem.getBoundingClientRect();
+  const uniY = uniRect.top + uniRect.height / 2 - containerRect.top;
+  const uniX = uniRect.left - containerRect.left;
+  const uniXR = uniRect.right - containerRect.left;
+
+  // Find broker col-items
+  for (const brokerId of BROKER_ORDER) {
+    const brokerItem = document.querySelector(`.col-item[data-broker="${brokerId}"][data-field="${fieldName}"]`);
+    if (!brokerItem) continue;
+
+    const bRect = brokerItem.getBoundingClientRect();
+    const bY = bRect.top + bRect.height / 2 - containerRect.top;
+    const bXR = bRect.right - containerRect.left;
+    const bXL = bRect.left - containerRect.left;
+
+    const meta = BROKER_META[brokerId];
+    const uf = UNIFIED_FIELDS.find(f => f.field === fieldName);
+    const color = CAT_COLORS[uf?.cat] || '#58a6ff';
+
+    // Determine if broker column is to the left or right of unified
+    const brokerIdx = BROKER_ORDER.indexOf(brokerId);
+    const isLeft = brokerIdx < 2; // DHL, FedEx are left; UPS, DSV are right
+
+    let startX, startY, endX, endY;
+    if (isLeft) {
+      startX = bXR + 2;
+      startY = bY;
+      endX = uniX - 2;
+      endY = uniY;
+    } else {
+      startX = bXL - 2;
+      startY = bY;
+      endX = uniXR + 2;
+      endY = uniY;
+    }
+
+    const cpOff = Math.abs(endX - startX) * 0.4;
+    const d = `M ${startX} ${startY} C ${startX + (isLeft ? cpOff : -cpOff)} ${startY}, ${endX + (isLeft ? -cpOff : cpOff)} ${endY}, ${endX} ${endY}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', color);
+    path.classList.add('highlight');
+    svg.appendChild(path);
+  }
+}
+
+function clearConnections() {
+  document.getElementById('map-svg').innerHTML = '';
+}
+
+/* ═══════════════════════════════════════════════
+   Interaction
+   ═══════════════════════════════════════════════ */
+
+function highlightField(fieldName) {
+  activeField = fieldName;
+  document.querySelectorAll('.col-item').forEach(el => {
+    if (el.dataset.field === fieldName) {
+      el.classList.add('highlight');
+      el.classList.remove('dim');
+    } else {
+      el.classList.remove('highlight');
+      el.classList.add('dim');
+    }
+  });
+  drawConnections(fieldName);
+}
+
+function clearHighlight() {
+  activeField = null;
+  document.querySelectorAll('.col-item').forEach(el => {
+    el.classList.remove('highlight', 'dim');
+  });
+  clearConnections();
+}
+
+function filterByCategory(cat) {
+  activeCat = cat;
+  document.querySelectorAll('.col-item').forEach(el => {
+    if (cat === 'all' || el.dataset.cat === cat) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  });
+  document.querySelectorAll('.section-divider').forEach(el => {
+    const next = el.nextElementSibling;
+    if (!next) return;
+    // Hide section divider if all items in section are hidden
+    let sibling = next;
+    let anyVisible = false;
+    while (sibling && !sibling.classList.contains('section-divider')) {
+      if (!sibling.classList.contains('hidden')) anyVisible = true;
+      sibling = sibling.nextElementSibling;
+    }
+    el.style.display = anyVisible ? '' : 'none';
+  });
+
+  // Table view filter
+  document.querySelectorAll('#details-body tr').forEach(tr => {
+    if (cat === 'all' || tr.dataset.cat === cat) {
+      tr.style.display = '';
+    } else {
+      tr.style.display = 'none';
+    }
+  });
+
+  clearHighlight();
+}
+
+function filterBySearch(query) {
+  const q = query.toLowerCase().trim();
+  let anyVisible = false;
+
+  document.querySelectorAll('.col-item').forEach(el => {
+    const name = el.querySelector('.col-name')?.textContent.toLowerCase() || '';
+    const field = el.dataset.field?.toLowerCase() || '';
+    const matches = !q || name.includes(q) || field.includes(q);
+    const catOk = activeCat === 'all' || el.dataset.cat === activeCat;
+    if (matches && catOk) {
+      el.classList.remove('hidden');
+      anyVisible = true;
+    } else {
+      el.classList.add('hidden');
+    }
+  });
+
+  // Update section dividers
+  document.querySelectorAll('.section-divider').forEach(el => {
+    let sibling = el.nextElementSibling;
+    let anyVisibleInSection = false;
+    while (sibling && !sibling.classList.contains('section-divider')) {
+      if (!sibling.classList.contains('hidden')) anyVisibleInSection = true;
+      sibling = sibling.nextElementSibling;
+    }
+    el.style.display = anyVisibleInSection ? '' : 'none';
+  });
+
+  // Table filter
+  document.querySelectorAll('#details-body tr').forEach(tr => {
+    const text = tr.textContent.toLowerCase();
+    const catOk = activeCat === 'all' || tr.dataset.cat === activeCat;
+    if ((!q || text.includes(q)) && catOk) {
+      tr.style.display = '';
+    } else {
+      tr.style.display = 'none';
+    }
+  });
+
+  document.getElementById('no-results').classList.toggle('visible', !anyVisible && q.length > 0);
+}
+
+function showTooltip(e, field, broker) {
+  const tooltip = document.getElementById('tooltip');
+  const uf = UNIFIED_FIELDS.find(f => f.field === field);
+  if (!uf) return;
+
+  document.getElementById('tt-field').textContent = uf.label;
+
+  let mappingHTML = '';
+  if (broker === 'UNIFIED') {
+    // Show which brokers map to this
+    for (const b of BROKER_ORDER) {
+      const m = BROKER_MAP[b][field];
+      if (m) {
+        mappingHTML += `<div><span>${BROKER_META[b].label}</span> → col <span>${m.col}</span> (${m.colName})${m.note ? ' ⓘ ' + m.note : ''}</div>`;
+      }
+    }
+  } else {
+    const m = BROKER_MAP[broker]?.[field];
+    if (m) {
+      mappingHTML = `<div><span>${BROKER_META[broker].label}</span> col <span>${m.col}</span> → <span>${uf.label}</span>${m.note ? '<br>ⓘ ' + m.note : ''}</div>`;
+    }
+  }
+
+  document.getElementById('tt-mapping').innerHTML = mappingHTML;
+  document.getElementById('tt-cat').textContent = 'Category: ' + uf.cat;
+
+  tooltip.style.left = Math.min(e.clientX + 12, window.innerWidth - 340) + 'px';
+  tooltip.style.top = Math.min(e.clientY + 12, window.innerHeight - 120) + 'px';
+  tooltip.classList.add('visible');
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+function bindEvents() {
+  // Category filters
+  document.querySelectorAll('#cat-filters .ctrl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#cat-filters .ctrl-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const cat = btn.dataset.cat;
+      filterByCategory(cat);
+    });
+  });
+
+  // Search
+  document.getElementById('search').addEventListener('input', (e) => {
+    filterBySearch(e.target.value);
+  });
+
+  // Column hover & click
+  document.addEventListener('mouseover', (e) => {
+    const item = e.target.closest('.col-item');
+    if (item) {
+      showTooltip(e, item.dataset.field, item.dataset.broker);
+      if (!activeField) {
+        // Temporary highlight on hover
+        const field = item.dataset.field;
+        document.querySelectorAll('.col-item').forEach(el => {
+          if (el.dataset.field === field) {
+            el.classList.add('highlight');
+          } else if (!activeField) {
+            el.classList.add('dim');
+          }
+        });
+        drawConnections(field);
+      }
+    }
+  });
+
+  document.addEventListener('mouseout', (e) => {
+    const item = e.target.closest('.col-item');
+    if (item && !activeField) {
+      hideTooltip();
+      document.querySelectorAll('.col-item').forEach(el => {
+        el.classList.remove('highlight', 'dim');
+      });
+      clearConnections();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const item = e.target.closest('.col-item');
+    if (item) {
+      const field = item.dataset.field;
+      if (activeField === field) {
+        clearHighlight();
+      } else {
+        highlightField(field);
+      }
+    } else if (!e.target.closest('.ctrl-btn') && !e.target.closest('.search-input') && !e.target.closest('.mode-btn')) {
+      clearHighlight();
+    }
+  });
+
+  // Mode toggle
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      document.getElementById('grid-view').classList.toggle('active', mode === 'grid');
+      document.getElementById('table-view').classList.toggle('active', mode === 'table');
+    });
+  });
+
+  // Redraw connections on resize/scroll
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (activeField) drawConnections(activeField);
+    }, 100);
+  });
+
+  // Redraw connections on scroll (within col-lists)
+  document.querySelectorAll('.col-list').forEach(list => {
+    list.addEventListener('scroll', () => {
+      if (activeField) drawConnections(activeField);
+    });
+  });
+}
+
+/* ═══ Boot ═══ */
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

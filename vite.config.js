@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
   base: './',
@@ -6,7 +7,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: 'index.html'
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        columnMap: resolve(__dirname, 'column-map.html'),
+      }
     }
   },
   server: {
