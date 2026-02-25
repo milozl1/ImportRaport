@@ -17,11 +17,11 @@ export const BROKERS = [
       <path d="M10 13h14l-3 4H7l3-4zm0 14h14l3-4H13l-3 4zm17-14h14l-10 14H17l10-14zm17 0h18l-3 4H47l3-4zm-3 14h18l3-4H44l-3 4zm6-10h14l-7 10H47l7-10zm20-4h18l-3 4H70l3-4zm-3 14h18l3-4H70l-3 4zm6-10h17v10H76l7-10z" fill="#D40511"/>
     </svg>`,
     capabilities: [
-      { category: 'Parsing',    icon: 'layers',  text: '137-column layout · dual-header structure' },
-      { category: 'Repair',     icon: 'wrench',  text: 'Address zone & delivery location shift repair' },
-      { category: 'Repair',     icon: 'wrench',  text: 'Goods description fragment reconstruction' },
-      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal number conversion' },
-      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code compliance checks' },
+      { category: 'Parsing',    icon: 'layers',  text: 'Dual-header, 137-column layout' },
+      { category: 'Repair',     icon: 'wrench',  text: 'Address & delivery overflow correction (e.g. shipper address spanning 2 cells → merged)' },
+      { category: 'Repair',     icon: 'wrench',  text: 'Goods description reconstruction (e.g. 8 fragmented cells → single description)' },
+      { category: 'Normalise',  icon: 'decimal', text: 'Number format conversion (e.g. "1.234,56" → 1234.56)' },
+      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code checks (e.g. 8–11 digit HS, 2-letter ISO)' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 3) return true;
@@ -44,10 +44,10 @@ export const BROKERS = [
       <text x="55" y="27" font-family="Arial Black,sans-serif" font-size="18" font-weight="900" fill="#FF6600">Ex</text>
     </svg>`,
     capabilities: [
-      { category: 'Parsing',    icon: 'layers',  text: 'Header at row 14 · single-header layout' },
-      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal · text-to-number' },
-      { category: 'Cleanse',    icon: 'broom',   text: 'Whitespace & newline stripping from fields' },
-      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code compliance checks' },
+      { category: 'Parsing',    icon: 'layers',  text: 'Header at row 14, single-header layout' },
+      { category: 'Normalise',  icon: 'decimal', text: 'Number conversion (e.g. "5.678,90" → 5678.90)' },
+      { category: 'Cleanse',    icon: 'broom',   text: 'Field cleanup (e.g. trailing \\n and spaces stripped)' },
+      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code checks (e.g. invalid codes flagged)' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 3) return true;
@@ -69,8 +69,8 @@ export const BROKERS = [
       <text x="10" y="27" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Kuehne+Nagel</text>
     </svg>`,
     capabilities: [
-      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal number conversion' },
-      { category: 'Merge',      icon: 'merge',   text: 'Multi-file consolidation' },
+      { category: 'Normalise',  icon: 'decimal', text: 'Number conversion (e.g. ",40" → 0.40)' },
+      { category: 'Merge',      icon: 'merge',   text: 'Multi-file consolidation into single Excel' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
@@ -93,11 +93,10 @@ export const BROKERS = [
       <text x="28" y="28" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="#FFFFFF">DSV</text>
     </svg>`,
     capabilities: [
-      { category: 'Parsing',    icon: 'layers',  text: 'Sea (92/158-col) + Air DE/EN layouts' },
-      { category: 'Align',      icon: 'align',   text: 'Cross-period header synonym alignment' },
-      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal · text-to-number' },
-      { category: 'Normalise',  icon: 'clock',   text: 'Excel serial dates/times → DD.MM.YYYY / HH:MM' },
-      { category: 'Air',        icon: 'plane',   text: 'Air-only fields isolated to Sheet 2' },
+      { category: 'Parsing',    icon: 'layers',  text: 'Sea + Air layouts (e.g. 92-col, 158-col, 44-col EN)' },
+      { category: 'Align',      icon: 'align',   text: 'Header alignment across periods (e.g. "Versender EORI" → "Versender CZ EORI")' },
+      { category: 'Normalise',  icon: 'decimal', text: 'Numbers & dates (e.g. Excel serial 45678 → "05.01.2025")' },
+      { category: 'Air',        icon: 'plane',   text: 'Air-only fields on Sheet 2 (e.g. CBAM, AWB, Invoice No.)' },
     ],
     /**
      * DSV Luftfracht XLSX files can contain multiple sheets.
@@ -254,8 +253,8 @@ export const BROKERS = [
       <text x="8" y="27" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">DB Schenker</text>
     </svg>`,
     capabilities: [
-      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal number conversion' },
-      { category: 'Merge',      icon: 'merge',   text: 'Multi-file consolidation' },
+      { category: 'Normalise',  icon: 'decimal', text: 'Number conversion (e.g. ",40" → 0.40)' },
+      { category: 'Merge',      icon: 'merge',   text: 'Multi-file consolidation into single Excel' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
@@ -274,14 +273,14 @@ export const BROKERS = [
     accent: '#FFB500',
     logoIcon: `<svg viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="40" rx="6" fill="#351C15"/>
-      <path d="M46 8h28v24c0 5-14 5-14 5s-14 0-14-5V8z" fill="#FFB500"/>
-      <text x="50" y="27" font-family="Arial Black,sans-serif" font-size="14" font-weight="900" fill="#351C15">UPS</text>
+      <path d="M44 8h32v22c0 6-16 6-16 6s-16 0-16-6V8z" fill="#FFB500"/>
+      <text x="48" y="27" font-family="Arial Black,sans-serif" font-size="14" font-weight="900" fill="#351C15" letter-spacing="1">UPS</text>
     </svg>`,
     capabilities: [
-      { category: 'Parsing',    icon: 'layers',  text: '23 numeric columns · 4 country columns' },
-      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal · text-to-number' },
-      { category: 'Cleanse',    icon: 'broom',   text: 'Whitespace stripping · trailing column trim' },
-      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code compliance checks' },
+      { category: 'Parsing',    icon: 'layers',  text: '23 numeric columns, 4 country fields' },
+      { category: 'Normalise',  icon: 'decimal', text: 'Number conversion (e.g. "5.678,90" → 5678.90)' },
+      { category: 'Cleanse',    icon: 'broom',   text: 'Field & column cleanup (e.g. trailing empty columns trimmed)' },
+      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code checks (e.g. 4 country columns validated)' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
