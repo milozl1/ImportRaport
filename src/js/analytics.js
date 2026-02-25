@@ -23,6 +23,8 @@ const COLUMN_MAP = {
   DHL: {
     type: 'index',
     date:             0,    // date of declaration (DD.MM.YYYY)
+    declarantEORI:    1,    // EORI number IOR / EORI-Nummer Anmelder
+    declarantName:    3,    // name of IOR / Anmelder Name
     declarationNo:    4,    // declaration number
     shipperName:      20,   // Shipper Name
     shipperCountry:   24,   // Shipper Country (2-letter)
@@ -52,8 +54,14 @@ const COLUMN_MAP = {
     date:             7,    // DATUM (Excel serial → needs conversion)
     declarationNo:    6,    // REGISTRIERNUMMER
     awb:              5,    // AWB
-    shipperCountry:   21,   // VERSENDUNGSLAND
+    declarantEORI:    8,    // ZOLLNUMMER ANMELDER EORI
+    declarantName:    10,   // NAME ANMELDER
+    shipperEORI:      11,   // ZOLLNUMMER VERSENDER
+    shipperName:      12,   // NAME VERSENDER
+    consigneeEORI:    13,   // ZOLLNUMMER EMPFAENGER
     consigneeName:    15,   // NAME EMPFAENGER
+    shipperCountry:   21,   // VERSENDUNGSLAND
+    destinationCountry: 28, // BESTIMMUNGSLAND
     incoterm:         31,   // LIEFERBEDINGUNG
     deliveryPlace:    32,   // LIEFERORT
     invoiceValue:     22,   // RECHNUNGSPREIS (header level)
@@ -77,6 +85,8 @@ const COLUMN_MAP = {
   UPS: {
     type: 'index',
     date:             0,    // Datum der Zollanmeldung (DD.MM.YYYY)
+    declarationNo:    2,    // ATE/ATC-Nummer
+    positionNo:       5,    // Positionsnummer
     invoiceValue:     8,    // Rechnungspreis
     currency:         9,    // Waehrung
     exchangeRate:     10,   // Kurs
@@ -97,39 +107,50 @@ const COLUMN_MAP = {
     eustAmount:       40,   // EUSt-Betrag
     senderName:       41,   // Versendername
     senderCountry:    42,   // Land (sender)
+    sellerName:       43,   // Verkaeufername
     sellerCountry:    44,   // Land4 (seller)
     incoterm:         45,   // Lieferbedingungsschluessel
     euFreight:        47,   // Anteilige Frachtkosten bis EU-Grenze
+    buyerName:        50,   // Kaeufername
+    consigneeEORI:    57,   // EORI Empfaenger
+    declarantEORI:    58,   // EORI Anmelder
   },
   DSV: {
     type: 'header',
     // Map logical field names → possible header names
     headerMap: {
-      date:            ['Anlagedatum', 'Ãberlassungsdatum', 'Überlassungsdatum', 'Entry Date \n(ddmmyy)', 'Arrival Date'],
-      declarationNo:   ['Registriernummer/MRN', 'Registrienummer/MRN', 'Formal Entry Number'],
-      shipperName:     ['CZ Name', 'Versender Name', 'Supplier Name / Shipper Name'],
-      shipperCountry:  ['CZ Ländercode', 'Versender Ländercode', 'Shipping Country'],
+      // Luftfracht Q1 uses CamelCase headers (e.g. MassgeblicherZeitpunkt),
+      // Luftfracht 07.05 uses spaced headers similar to Sea (e.g. Anlagedatum).
+      // Both variants must be listed for each field.
+      date:            ['Anlagedatum', 'MassgeblicherZeitpunkt', 'Ãberlassungsdatum', 'Überlassungsdatum', 'Entry Date \n(ddmmyy)', 'Arrival Date'],
+      declarationNo:   ['Registriernummer/MRN', 'Registrienummer/MRN', 'RegistrierNummer', 'Formal Entry Number'],
+      declarantName:   ['DT Name', 'Anmelder Name', 'Broker Name'],
+      declarantEORI:   ['Anmelder DT EORI', 'DT EORI', 'Anmelder EORI', 'Anmelder Ländercode'],
+      shipperName:     ['CZ Name', 'Versender Name', 'Versender', 'Supplier Name / Shipper Name'],
+      shipperCountry:  ['CZ Ländercode', 'Versender Ländercode', 'VersendungsLand', 'Shipping Country'],
+      shipperEORI:     ['Versender CZ EORI', 'CZ EORI', 'Versender EORI'],
       consigneeName:   ['CN Name', 'Empfänger Name', 'Importer Name'],
       consigneeCountry:['CN Ländercode', 'Empfänger Ländercode', 'Declaration Country'],
-      incoterm:        ['Liefercode', 'Incoterms'],
-      deliveryPlace:   ['Lieferort'],
-      invoiceValue:    ['Rechnungsbetrag', 'Invoice value'],
-      currency:        ['Rechnungswährung', 'Invoice currency'],
-      exchangeRate:    ['Rechnungskurs', 'Exchange Rate'],
-      hsCode:          ['Warentarifnummer', 'HTS Code (Tariff Number)'],
-      description:     ['Warenbezeichnung', 'Item Description'],
-      countryOfOrigin: ['Ursprung', 'Country of Origin'],
-      procedureCode:   ['Verfahren'],
-      customsDuty:     ['AbgabeZoll', 'Vorraussichtliche Zollabgabe', 'Vorausstl. Zollabgabe', 'Duty Paid'],
-      customsDutyRate: ['AbgabeZollsatz', 'Vorraussichtliche Zollsatzabgabe', 'Vorausstl. Zollsatzabgabe', 'Duty Rate %'],
-      eustAmount:      ['AbgabeEust', 'Vorraussichtliche Eustabgabe', 'Vorausstl. Eustabgabe', 'VAT Paid'],
-      eustRate:        ['AbgabeEustsatz', 'Vorraussichtliche Eustsatzabgabe', 'Vorausstl. Eustsatzabgabe', 'VAT Rate %'],
-      customsValue:    ['Zollwert', 'Declared Value'],
+      consigneeEORI:   ['Empfänger CN EORI', 'CN EORI', 'Empfänger EORI', 'Importer ID'],
+      incoterm:        ['Liefercode', 'IncoTerm', 'Incoterms'],
+      deliveryPlace:   ['Lieferort', 'LieferBedingungOrt'],
+      invoiceValue:    ['Rechnungsbetrag', 'RechnungsWertGesamt', 'RechnungsNettoWertPosition', 'Invoice value'],
+      currency:        ['Rechnungswährung', 'Rechnungswährung', 'RechnungsWertWaehrung', 'Invoice currency'],
+      exchangeRate:    ['Rechnungskurs', 'KursZuEuro', 'Exchange Rate'],
+      hsCode:          ['Warentarifnummer', 'WarenNummer', 'HTS Code (Tariff Number)'],
+      description:     ['Warenbezeichnung', 'WarenBezeichnung', 'Item Description'],
+      countryOfOrigin: ['Ursprung', 'UrsprungsLand', 'Country of Origin'],
+      procedureCode:   ['VerfahrensCode', 'Verfahren_1', 'Verfahren'],
+      customsDuty:     ['AbgabeZoll', 'AbgabenZoll', 'Vorraussichtliche Zollabgabe', 'Vorausstl. Zollabgabe', 'Duty Paid'],
+      customsDutyRate: ['AbgabeZollsatz', 'AbgabenZollsatz', 'Zollabgabensatz', 'Vorraussichtliche Zollsatzabgabe', 'Vorausstl. Zollsatzabgabe', 'Duty Rate %'],
+      eustAmount:      ['AbgabeEust', 'AbgabenEUSt', 'AbgabenEust', 'Vorraussichtliche Eustabgabe', 'Vorausstl. Eustabgabe', 'VAT Paid'],
+      eustRate:        ['AbgabeEustsatz', 'AbgabenEustsatz', 'Vorraussichtliche Eustsatzabgabe', 'Vorausstl. Eustsatzabgabe', 'EustsatzZoll', 'VAT Rate %'],
+      customsValue:    ['Zollwert', 'ZollWert', 'Declared Value'],
       articlePrice:    ['Artikelpreis'],
-      grossWeight:     ['Rohmasse', 'Gesamtgewicht', 'Gross Mass (in kg)'],
-      netWeight:       ['Eigenmasse', 'Net Mass (in kg)'],
-      freightCost:     ['DV1Frachtkosten', 'DV1Luftfrachtkosten'],
-      packageCount:    ['AnzahlPackstücke', 'Anzahlpackstã¼cke'],
+      grossWeight:     ['Rohmasse', 'RohMasse', 'Gesamtgewicht', 'Gross Mass (in kg)'],
+      netWeight:       ['Eigenmasse', 'EigenMasse', 'Net Mass (in kg)'],
+      freightCost:     ['DV1Frachtkosten', 'DV1Luftfrachtkosten', 'ZollWertRelevanteFracht', 'FrachtKostenPosition'],
+      packageCount:    ['AnzahlPackstücke', 'AnzahlDerPackstuecke', 'Anzahlpackstã¼cke'],
       statisticalValue:['Statistischerwert'],
       container:       ['Container'],
     },
@@ -153,11 +174,13 @@ function buildDSVResolver(headers) {
 
   for (const [field, names] of Object.entries(dsvMap)) {
     for (const name of names) {
-      // For procedureCode, "Verfahren" appears twice: once at col ~2
-      // (declaration type, e.g. "IMDC") and once at col ~84 (customs
-      // procedure code, e.g. "4000"). We want the second (position-level)
-      // occurrence, so search from column 40 onwards.
-      const startIdx = (field === 'procedureCode') ? 40 : 0;
+      // For procedureCode, the generic header "Verfahren" appears twice in
+      // Sea files: once at col ~2 (declaration type, e.g. "IMDC") and once
+      // at col ~84 (customs procedure code, e.g. "4000"). We want the
+      // second (position-level) occurrence, so search from column 40 onwards.
+      // However, more specific names like "VerfahrensCode" (Luftfracht Q1,
+      // col 9) are unambiguous and should match at any position.
+      const startIdx = (field === 'procedureCode' && name.toLowerCase() === 'verfahren') ? 40 : 0;
       const idx = headerRow.findIndex((h, i) => i >= startIdx && h.toLowerCase() === name.toLowerCase());
       if (idx !== -1) { map[field] = idx; break; }
     }
@@ -176,12 +199,23 @@ function getField(row, field, colMap) {
 
 /**
  * Parse a numeric value, handling various formats.
+ * Handles European comma-decimal as safety net (validator should have
+ * already converted, but some data may bypass validation).
  */
 function toNum(v) {
   if (v == null || v === '') return null;
   if (typeof v === 'number') return isNaN(v) ? null : v;
-  const s = String(v).trim().replace(/\s/g, '');
-  // Already dot-decimal (after validator fixes)
+  let s = String(v).trim().replace(/\s/g, '');
+  // European comma-decimal: "74,73" → "74.73", "1.234,56" → "1234.56"
+  if (s.includes(',')) {
+    if (/^\d{1,3}(\.\d{3})*,\d+$/.test(s)) {
+      // Thousands-dot + comma-decimal: "1.234,56" → "1234.56"
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (/^-?\d+,\d+$/.test(s)) {
+      // Simple comma-decimal: "74,73" → "74.73"
+      s = s.replace(',', '.');
+    }
+  }
   const n = parseFloat(s);
   return isNaN(n) ? null : n;
 }
@@ -210,6 +244,10 @@ function parseDate(v) {
   const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m2) return { year: +m2[1], month: +m2[2], day: +m2[3] };
 
+  // YYYYMMDD (used in Luftfracht Q1: MassgeblicherZeitpunkt = 20250113)
+  const m3 = s.match(/^(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/);
+  if (m3) return { year: +m3[1], month: +m3[2], day: +m3[3] };
+
   // Compressed DMMYYYY or DDMMYYYY (used in some Luftfracht files: 7052025 = 07.05.2025)
   if (typeof v === 'number' && v > 1000000 && v < 99999999) {
     const ds = String(v);
@@ -217,15 +255,18 @@ function parseDate(v) {
       // DMMYYYY
       return { year: +ds.substring(3), month: +ds.substring(1, 3), day: +ds.substring(0, 1) };
     } else if (ds.length === 8) {
-      // DDMMYYYY
-      return { year: +ds.substring(4), month: +ds.substring(2, 4), day: +ds.substring(0, 2) };
+      // DDMMYYYY — only if it doesn't start with 20xx (which is YYYYMMDD, handled above)
+      const dd = +ds.substring(0, 2), mm = +ds.substring(2, 4);
+      if (dd <= 31 && mm <= 12) {
+        return { year: +ds.substring(4), month: mm, day: dd };
+      }
     }
   }
 
   // DDMMYYYY as string (no separators)
-  const m3 = s.match(/^(\d{1,2})(\d{2})(\d{4})$/);
-  if (m3 && +m3[2] <= 12 && +m3[1] <= 31) {
-    return { year: +m3[3], month: +m3[2], day: +m3[1] };
+  const m4 = s.match(/^(\d{1,2})(\d{2})(\d{4})$/);
+  if (m4 && +m4[2] <= 12 && +m4[1] <= 31) {
+    return { year: +m4[3], month: +m4[2], day: +m4[1] };
   }
 
   return null;

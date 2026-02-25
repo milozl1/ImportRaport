@@ -218,7 +218,7 @@ console.log('\n═══ TEST GROUP 1: buildUnifiedHeader — basics ═══')
 {
   // Same headers → no extra columns
   const parts = [fp(['A', 'B', 'C']), fp(['A', 'B', 'C'])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 3, 'Same headers → 3 columns');
   assertDeepEqual(unified, ['A', 'B', 'C'], 'Same headers → same order');
 }
@@ -226,7 +226,7 @@ console.log('\n═══ TEST GROUP 1: buildUnifiedHeader — basics ═══')
 {
   // Wider file used as base
   const parts = [fp(['A', 'B']), fp(['A', 'B', 'C', 'D'])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 4, 'Wider file used as base (4 cols)');
   assertEqual(unified[0], 'A', 'First col preserved');
   assertEqual(unified[3], 'D', 'Extra cols from wider file');
@@ -235,7 +235,7 @@ console.log('\n═══ TEST GROUP 1: buildUnifiedHeader — basics ═══')
 {
   // Extra column in narrow file added at end
   const parts = [fp(['A', 'B', 'C']), fp(['A', 'B', 'D'])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 4, 'Extra unique col appended');
   assertEqual(unified[3], 'D', 'D appended at end');
 }
@@ -243,7 +243,7 @@ console.log('\n═══ TEST GROUP 1: buildUnifiedHeader — basics ═══')
 {
   // Single file
   const parts = [fp(['X', 'Y', 'Z'])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 3, 'Single file: 3 columns');
   assertDeepEqual(unified, ['X', 'Y', 'Z'], 'Single file: exact match');
 }
@@ -259,7 +259,7 @@ console.log('\n═══ TEST GROUP 2: buildUnifiedHeader — synonym dedup ═�
     fp(['Registriernummer/MRN', 'Other']),
     fp(['Registrienummer/MRN', 'Other']),  // old spelling
   ];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 2, 'Synonym dedup: no extra col for old spelling');
 }
 
@@ -267,7 +267,7 @@ console.log('\n═══ TEST GROUP 2: buildUnifiedHeader — synonym dedup ═�
   // Real 92-col vs 158-col: "Versender EORI" → "Versender CZ EORI"
   const narrow = fp(['Teilnehmer', 'Versender EORI', 'Rechnungsbetrag']);
   const wide = fp(['Teilnehmer', 'Versender CZ EORI', 'Rechnungsbetrag', 'Zollwert']);
-  const unified = buildUnifiedHeader([narrow, wide], DSV_BROKER);
+  const { unified } = buildUnifiedHeader([narrow, wide], DSV_BROKER);
   assertEqual(unified.length, 4, 'Synonym dedup: Versender EORI not duplicated');
   assert(!unified.includes('Versender EORI'), 'Old name not in unified');
   assert(unified.includes('Versender CZ EORI'), 'New name in unified');
@@ -280,7 +280,7 @@ console.log('\n═══ TEST GROUP 3: buildUnifiedHeader — real 92 vs 158 hea
 
 {
   const parts = [fp(HEADER_92), fp(HEADER_158)];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   // 158 is base. 92-col columns either match exactly or via synonym.
   // No 92-col column should create a new column.
   assertEqual(unified.length, HEADER_158.length, `Unified = ${HEADER_158.length} cols (no extras from 92-col)`);
@@ -289,7 +289,7 @@ console.log('\n═══ TEST GROUP 3: buildUnifiedHeader — real 92 vs 158 hea
 {
   // Reverse order: 92-col first, 158-col second
   const parts = [fp(HEADER_92), fp(HEADER_158)];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   // Should still be 158 cols (widest wins)
   assertEqual(unified.length, HEADER_158.length, 'Widest file wins regardless of order');
 }
@@ -302,7 +302,7 @@ console.log('\n═══ TEST GROUP 4: buildColumnMapping — exact match ══
 {
   const fileHdr = ['A', 'B', 'C'];
   const unified = ['A', 'B', 'C', 'D'];
-  const mapping = buildColumnMapping(fileHdr, unified, {});
+  const { mapping } = buildColumnMapping(fileHdr, unified, {}, []);
   assertDeepEqual(mapping, [0, 1, 2], 'Exact match: A→0, B→1, C→2');
 }
 
@@ -310,7 +310,7 @@ console.log('\n═══ TEST GROUP 4: buildColumnMapping — exact match ══
   // File header is subset, different positions
   const fileHdr = ['C', 'A'];
   const unified = ['A', 'B', 'C', 'D'];
-  const mapping = buildColumnMapping(fileHdr, unified, {});
+  const { mapping } = buildColumnMapping(fileHdr, unified, {}, []);
   assertDeepEqual(mapping, [2, 0], 'Reordered match: C→2, A→0');
 }
 
@@ -322,21 +322,21 @@ console.log('\n═══ TEST GROUP 5: buildColumnMapping — synonym match ═�
 {
   const fileHdr = ['Versender EORI', 'Rechnungsbetrag'];
   const unified = ['Versender CZ EORI', 'Rechnungsbetrag'];
-  const mapping = buildColumnMapping(fileHdr, unified, DSV_BROKER.headerSynonyms);
+  const { mapping } = buildColumnMapping(fileHdr, unified, DSV_BROKER.headerSynonyms, []);
   assertDeepEqual(mapping, [0, 1], 'Synonym: Versender EORI → 0, Rechnungsbetrag → 1');
 }
 
 {
   const fileHdr = ['AufschubHZAZoll', 'AufschubkontoZoll'];
   const unified = ['HZAZoll', 'KontoZoll', 'TextZoll'];
-  const mapping = buildColumnMapping(fileHdr, unified, DSV_BROKER.headerSynonyms);
+  const { mapping } = buildColumnMapping(fileHdr, unified, DSV_BROKER.headerSynonyms, []);
   assertDeepEqual(mapping, [0, 1], 'Synonym: Aufschub prefixes stripped');
 }
 
 {
   // All 92-col synonyms should map
-  const unified = buildUnifiedHeader([fp(HEADER_92), fp(HEADER_158)], DSV_BROKER);
-  const mapping = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms);
+  const { unified } = buildUnifiedHeader([fp(HEADER_92), fp(HEADER_158)], DSV_BROKER);
+  const { mapping } = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms, []);
   const unmapped = mapping.filter((m, i) => m === -1 && HEADER_92[i] !== '');
   assertEqual(unmapped.length, 0, 'All 92-col headers map to unified (no unmapped)');
 }
@@ -366,7 +366,7 @@ console.log('\n═══ TEST GROUP 6: buildColumnMapping — duplicate headers 
 {
   // Mapping should assign each "Währung" occurrence to a distinct unified position
   const unified = HEADER_158; // use 158 as-is
-  const mapping = buildColumnMapping(HEADER_158, unified, DSV_BROKER.headerSynonyms);
+  const { mapping } = buildColumnMapping(HEADER_158, unified, DSV_BROKER.headerSynonyms, []);
   // All should be mapped (no -1)
   const unmapped = mapping.filter(m => m === -1);
   assertEqual(unmapped.length, 0, 'All 158-col headers map (including duplicates)');
@@ -378,8 +378,8 @@ console.log('\n═══ TEST GROUP 6: buildColumnMapping — duplicate headers 
 
 {
   // 92-col "DV1Rechnugnswährung" should map to first available "Währung" in unified
-  const unified = buildUnifiedHeader([fp(HEADER_92), fp(HEADER_158)], DSV_BROKER);
-  const mapping = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms);
+  const { unified } = buildUnifiedHeader([fp(HEADER_92), fp(HEADER_158)], DSV_BROKER);
+  const { mapping } = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms, []);
   
   const dvr_idx = HEADER_92.indexOf('DV1Rechnugnswährung');
   const dvr_unified = mapping[dvr_idx];
@@ -475,8 +475,8 @@ console.log('\n═══ TEST GROUP 9: Full data alignment 92→158 ═══');
   row92[89] = 'TPE';                    // Abflughafen Code
 
   const parts = [fp(HEADER_92, [row92]), fp(HEADER_158, [])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
-  const mapping = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
+  const { mapping } = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms, []);
   const remapped = remapRow(row92, mapping, unified.length);
 
   // Check key values landed in correct unified positions
@@ -512,8 +512,8 @@ console.log('\n═══ TEST GROUP 10: 158-only columns are null in 92-col rows
   row92[0] = 'ZOCE';
 
   const parts = [fp(HEADER_92, [row92]), fp(HEADER_158, [])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
-  const mapping = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
+  const { mapping } = buildColumnMapping(HEADER_92, unified, DSV_BROKER.headerSynonyms, []);
   const remapped = remapRow(row92, mapping, unified.length);
 
   // Columns that only exist in 158-col should be null
@@ -556,11 +556,11 @@ console.log('\n═══ TEST GROUP 11: Alignment + validation pipeline ══�
   row158[71] = '73.88';     // Already dot-decimal
 
   const parts = [fp(HEADER_92, [row92]), fp(HEADER_158, [row158])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   
   const allData = [];
   for (const p of parts) {
-    const mapping = buildColumnMapping(p.hRow, unified, DSV_BROKER.headerSynonyms);
+    const { mapping } = buildColumnMapping(p.hRow, unified, DSV_BROKER.headerSynonyms, []);
     for (const row of p.data) {
       allData.push(remapRow(row, mapping, unified.length));
     }
@@ -610,14 +610,14 @@ console.log('\n═══ TEST GROUP 13: Edge cases ═══');
 {
   // Empty header
   const parts = [fp([])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 0, 'Empty header → empty unified');
 }
 
 {
   // Headers with null values
   const parts = [fp(['A', null, 'B', ''])];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
   assertEqual(unified.length, 4, 'Headers with null: length preserved');
   assertEqual(unified[0], 'A', 'First header preserved');
   assertEqual(unified[1], '', 'null → empty string');
@@ -721,11 +721,11 @@ console.log('\n═══ TEST GROUP 16: Multiple rows from multiple files ══
   }
 
   const parts = [fp(HEADER_92, rows92), fp(HEADER_158, rows158)];
-  const unified = buildUnifiedHeader(parts, DSV_BROKER);
+  const { unified } = buildUnifiedHeader(parts, DSV_BROKER);
 
   const allData = [];
   for (const p of parts) {
-    const mapping = buildColumnMapping(p.hRow, unified, DSV_BROKER.headerSynonyms);
+    const { mapping } = buildColumnMapping(p.hRow, unified, DSV_BROKER.headerSynonyms, []);
     for (const row of p.data) {
       allData.push(remapRow(row, mapping, unified.length));
     }
