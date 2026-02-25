@@ -101,10 +101,29 @@ function renderBrokerGrid() {
   const grid = $('#broker-grid');
   const processedIds = new Set(storedReports.map(r => r.brokerId));
 
+  // Icon paths for capability categories
+  const CAP_ICONS = {
+    layers:  `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="8,2 14,5.5 8,9 2,5.5"/><polyline points="2,9 8,12.5 14,9"/></svg>`,
+    wrench:  `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3.5a3 3 0 0 0-4.24 4.24L2 14l.5.5 6.26-6.26A3 3 0 0 0 12.5 3.5z"/></svg>`,
+    decimal: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><text x="1" y="12" font-size="11" fill="currentColor" stroke="none" font-family="monospace">1.0</text></svg>`,
+    shield:  `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L3 4v4c0 3 2.5 5.5 5 6 2.5-.5 5-3 5-6V4z"/><polyline points="5.5,8 7,9.5 10.5,6"/></svg>`,
+    broom:   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="12" y2="12"/><path d="M10 10c1 2 0 4-2 4s-4-2-3-4l5 0z"/></svg>`,
+    align:   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="10" y2="12"/></svg>`,
+    clock:   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 10.5,8"/></svg>`,
+    plane:   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5L8.5 8 6 6 4 7l3 2-1.5 1.5-2-.5L2 11l3 .5L14 4.5z"/></svg>`,
+    merge:   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="3" x2="3" y2="8"/><line x1="13" y1="3" x2="13" y2="8"/><path d="M3 8 Q3 13 8 13 Q13 13 13 8"/><line x1="8" y1="13" x2="8" y2="16"/></svg>`,
+  };
+
   grid.innerHTML = BROKERS.map(b => {
-    const caps = (b.capabilities || []).map(c =>
-      `<li class="cap-item"><span class="cap-text">${c.text}</span></li>`
-    ).join('');
+    const caps = (b.capabilities || []).map(c => {
+      const icon = CAP_ICONS[c.icon] || CAP_ICONS.layers;
+      return `
+        <li class="cap-item">
+          <span class="cap-icon">${icon}</span>
+          <span class="cap-category">${c.category}</span>
+          <span class="cap-text">${c.text}</span>
+        </li>`;
+    }).join('');
     const badge = processedIds.has(b.id)
       ? `<span class="broker-badge-done" title="Report stored for overall analytics">${IC.check} Processed</span>`
       : '';
@@ -115,7 +134,7 @@ function renderBrokerGrid() {
       <div class="broker-tag">${b.headerRows} header row${b.headerRows > 1 ? 's' : ''}</div>
       ${badge}
       <div class="broker-capabilities">
-        <div class="cap-title">What this module does</div>
+        <div class="cap-title">Capabilities</div>
         <ul class="cap-list">${caps}</ul>
       </div>
     </div>

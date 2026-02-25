@@ -17,12 +17,11 @@ export const BROKERS = [
       <path d="M10 13h14l-3 4H7l3-4zm0 14h14l3-4H13l-3 4zm17-14h14l-10 14H17l10-14zm17 0h18l-3 4H47l3-4zm-3 14h18l3-4H44l-3 4zm6-10h14l-7 10H47l7-10zm20-4h18l-3 4H70l3-4zm-3 14h18l3-4H70l-3 4zm6-10h17v10H76l7-10z" fill="#D40511"/>
     </svg>`,
     capabilities: [
-      { text: 'Repairs column shifts in address zones and delivery location overflow' },
-      { text: 'Reconstructs fragmented goods descriptions spanning multiple columns' },
-      { text: 'Corrects delivery location overflow that displaces freight data' },
-      { text: 'Converts European number formats to standard decimal notation' },
-      { text: 'Validates HS codes and country codes for customs compliance' },
-      { text: 'Processes complex layout with dual-header structure' },
+      { category: 'Parsing',    icon: 'layers',  text: '137-column layout · dual-header structure' },
+      { category: 'Repair',     icon: 'wrench',  text: 'Address zone & delivery location shift repair' },
+      { category: 'Repair',     icon: 'wrench',  text: 'Goods description fragment reconstruction' },
+      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal number conversion' },
+      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code compliance checks' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 3) return true;
@@ -45,10 +44,10 @@ export const BROKERS = [
       <text x="55" y="27" font-family="Arial Black,sans-serif" font-size="18" font-weight="900" fill="#FF6600">Ex</text>
     </svg>`,
     capabilities: [
-      { text: 'Removes trailing whitespace and newlines from text fields' },
-      { text: 'Converts European number formats to standard decimal notation' },
-      { text: 'Transforms text-formatted numbers to proper numeric values' },
-      { text: 'Validates HS codes and country codes for accuracy' },
+      { category: 'Parsing',    icon: 'layers',  text: 'Header at row 14 · single-header layout' },
+      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal · text-to-number' },
+      { category: 'Cleanse',    icon: 'broom',   text: 'Whitespace & newline stripping from fields' },
+      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code compliance checks' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 3) return true;
@@ -70,8 +69,8 @@ export const BROKERS = [
       <text x="10" y="27" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#FFFFFF">Kuehne+Nagel</text>
     </svg>`,
     capabilities: [
-      { text: 'Corrects malformed numbers with leading commas or dots' },
-      { text: 'Performs basic file merge and consolidation operations' },
+      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal number conversion' },
+      { category: 'Merge',      icon: 'merge',   text: 'Multi-file consolidation' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
@@ -94,12 +93,11 @@ export const BROKERS = [
       <text x="28" y="28" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="#FFFFFF">DSV</text>
     </svg>`,
     capabilities: [
-      { text: 'Converts European number formats to standard decimal notation' },
-      { text: 'Transforms text-formatted numbers to proper numeric values' },
-      { text: 'Converts Excel serial dates to readable DD.MM.YYYY format' },
-      { text: 'Converts Excel serial times and datetimes to HH:MM format' },
-      { text: 'Aligns different column layouts across reporting periods' },
-      { text: 'Supports CSV and XLSX files with intelligent sheet selection' },
+      { category: 'Parsing',    icon: 'layers',  text: 'Sea (92/158-col) + Air DE/EN layouts' },
+      { category: 'Align',      icon: 'align',   text: 'Cross-period header synonym alignment' },
+      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal · text-to-number' },
+      { category: 'Normalise',  icon: 'clock',   text: 'Excel serial dates/times → DD.MM.YYYY / HH:MM' },
+      { category: 'Air',        icon: 'plane',   text: 'Air-only fields isolated to Sheet 2' },
     ],
     /**
      * DSV Luftfracht XLSX files can contain multiple sheets.
@@ -256,8 +254,8 @@ export const BROKERS = [
       <text x="8" y="27" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#FFFFFF">DB Schenker</text>
     </svg>`,
     capabilities: [
-      { text: 'Corrects malformed numbers with leading commas or dots' },
-      { text: 'Performs basic file merge and consolidation operations' },
+      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal number conversion' },
+      { category: 'Merge',      icon: 'merge',   text: 'Multi-file consolidation' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
@@ -280,11 +278,10 @@ export const BROKERS = [
       <text x="50" y="27" font-family="Arial Black,sans-serif" font-size="14" font-weight="900" fill="#351C15">UPS</text>
     </svg>`,
     capabilities: [
-      { text: 'Removes trailing whitespace and newlines from text fields' },
-      { text: 'Converts European number formats to standard decimal notation' },
-      { text: 'Transforms text-formatted numbers to proper numeric values (23 columns)' },
-      { text: 'Automatically trims unused trailing empty columns' },
-      { text: 'Validates HS codes and country codes across 4 country columns' },
+      { category: 'Parsing',    icon: 'layers',  text: '23 numeric columns · 4 country columns' },
+      { category: 'Normalise',  icon: 'decimal', text: 'European → dot-decimal · text-to-number' },
+      { category: 'Cleanse',    icon: 'broom',   text: 'Whitespace stripping · trailing column trim' },
+      { category: 'Validate',   icon: 'shield',  text: 'HS code & country code compliance checks' },
     ],
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
