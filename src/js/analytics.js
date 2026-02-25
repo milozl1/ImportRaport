@@ -461,6 +461,224 @@ export function aggregateData(headers, data, brokerId) {
   };
 }
 
+/* ───────────────────────────────────────────────
+   Overall (Cross-Broker) Analytics Merge
+   ─────────────────────────────────────────────── */
+
+/**
+ * Merge multiple per-broker analytics objects into a single unified analytics.
+ * Each entry in `reports` has { brokerId, brokerLabel, analytics }.
+ *
+ * Strategy:
+ * - KPIs: sum all totals, recompute averages and rates from combined totals
+ * - Monthly: merge month buckets across brokers (additive)
+ * - Countries: merge country buckets across brokers (additive)
+ * - HS Chapters: merge chapter buckets (additive, combine description samples)
+ * - Currencies, Incoterms, Procedure Codes: merge by key (additive)
+ * - Distributions (duty, weight, invoice): sum bucket counts
+ * - Duty Rate by Country: recompute from combined country totals
+ * - Broker breakdown: new dataset showing per-broker declaration count + financials
+ */
+export function mergeAnalytics(reports) {
+  if (!reports || reports.length === 0) return null;
+  if (reports.length === 1) {
+    // Single report — return as-is with broker breakdown
+    const r = reports[0];
+    const a = r.analytics;
+    return {
+      ...a,
+      brokerId: 'OVERALL',
+      brokerBreakdown: [{
+        brokerId: r.brokerId,
+        brokerLabel: r.brokerLabel,
+        totalRows: a.totalRows,
+        totalInvoice: a.kpis.totalInvoiceValue,
+        totalDuty: a.kpis.totalDuty,
+        totalVAT: a.kpis.totalVAT,
+      }],
+    };
+  }
+
+  // ── Merge KPIs ──
+  let totalDeclarations = 0, totalInvoiceValue = 0, totalDuty = 0, totalVAT = 0;
+  let totalFreight = 0, totalWeight = 0;
+  let invoiceCount = 0, dutyCount = 0, freightCount = 0, weightCount = 0;
+  const allCountries = new Set();
+  const allHSChapters = new Set();
+  const allMonths = new Set();
+
+  for (const r of reports) {
+    const k = r.analytics.kpis;
+    totalDeclarations += k.totalDeclarations;
+    totalInvoiceValue += k.totalInvoiceValue;
+    totalDuty += k.totalDuty;
+    totalVAT += k.totalVAT;
+    totalFreight += k.totalFreight;
+    totalWeight += k.totalWeight;
+    // Sum counts for averages (approximate: use declaration count as proxy)
+    if (k.totalInvoiceValue > 0) invoiceCount += k.totalDeclarations;
+    if (k.totalDuty > 0) dutyCount += k.totalDeclarations;
+    if (k.totalFreight > 0) freightCount += k.totalDeclarations;
+    if (k.totalWeight > 0) weightCount += k.totalDeclarations;
+    // Unique values
+    r.analytics.countries.forEach(c => allCountries.add(c.code));
+    r.analytics.hsChapters.forEach(h => allHSChapters.add(h.chapter));
+    r.analytics.monthly.forEach(m => { if (m.key !== 'Unknown') allMonths.add(m.key); });
+  }
+
+  const kpis = {
+    totalDeclarations,
+    totalInvoiceValue,
+    totalDuty,
+    totalVAT,
+    totalDutiesAndVAT: totalDuty + totalVAT,
+    totalFreight,
+    totalWeight,
+    avgInvoiceValue: invoiceCount > 0 ? totalInvoiceValue / invoiceCount : 0,
+    avgDuty: dutyCount > 0 ? totalDuty / dutyCount : 0,
+    effectiveDutyRate: totalInvoiceValue > 0 ? (totalDuty / totalInvoiceValue * 100) : 0,
+    effectiveVATRate: totalInvoiceValue > 0 ? (totalVAT / totalInvoiceValue * 100) : 0,
+    uniqueCountries: allCountries.size,
+    uniqueHSChapters: allHSChapters.size,
+    monthsCovered: allMonths.size,
+    avgWeightPerShipment: weightCount > 0 ? totalWeight / weightCount : 0,
+    avgFreightPerShipment: freightCount > 0 ? totalFreight / freightCount : 0,
+  };
+
+  // ── Merge monthly data ──
+  const monthMap = {};
+  for (const r of reports) {
+    for (const m of r.analytics.monthly) {
+      if (!monthMap[m.key]) monthMap[m.key] = { key: m.key, label: m.label, count: 0, invoice: 0, duty: 0, vat: 0, freight: 0, weight: 0 };
+      monthMap[m.key].count += m.count;
+      monthMap[m.key].invoice += m.invoice;
+      monthMap[m.key].duty += m.duty;
+      monthMap[m.key].vat += m.vat;
+      monthMap[m.key].freight += m.freight;
+      monthMap[m.key].weight += m.weight;
+    }
+  }
+  const monthly = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key));
+
+  // ── Merge countries ──
+  const countryMap = {};
+  for (const r of reports) {
+    for (const c of r.analytics.countries) {
+      if (!countryMap[c.code]) countryMap[c.code] = { code: c.code, count: 0, totalInvoice: 0, totalDuty: 0, totalVAT: 0 };
+      countryMap[c.code].count += c.count;
+      countryMap[c.code].totalInvoice += c.totalInvoice;
+      countryMap[c.code].totalDuty += c.totalDuty;
+      countryMap[c.code].totalVAT += c.totalVAT;
+    }
+  }
+  const countries = Object.values(countryMap).sort((a, b) => b.count - a.count);
+
+  // ── Merge HS Chapters ──
+  const hsMap = {};
+  for (const r of reports) {
+    for (const h of r.analytics.hsChapters) {
+      if (!hsMap[h.chapter]) hsMap[h.chapter] = { chapter: h.chapter, count: 0, totalInvoice: 0, totalDuty: 0, descriptions: [] };
+      hsMap[h.chapter].count += h.count;
+      hsMap[h.chapter].totalInvoice += h.totalInvoice;
+      hsMap[h.chapter].totalDuty += h.totalDuty;
+      // Merge description samples (keep max 3 unique)
+      const descSet = new Set(hsMap[h.chapter].descriptions);
+      for (const d of (h.descriptions || [])) {
+        if (descSet.size < 3) descSet.add(d);
+      }
+      hsMap[h.chapter].descriptions = [...descSet];
+    }
+  }
+  const hsChapters = Object.values(hsMap).sort((a, b) => b.count - a.count);
+
+  // ── Merge simple key-count aggregations ──
+  function mergeByCode(fieldName) {
+    const map = {};
+    for (const r of reports) {
+      for (const item of r.analytics[fieldName]) {
+        if (!map[item.code]) map[item.code] = { code: item.code, count: 0, totalInvoice: 0 };
+        map[item.code].count += item.count;
+        map[item.code].totalInvoice += (item.totalInvoice || 0);
+      }
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }
+
+  const currencies = mergeByCode('currencies');
+  const incoterms = mergeByCode('incoterms');
+  const procedureCodes = mergeByCode('procedureCodes');
+
+  // ── Merge distribution buckets ──
+  function mergeBuckets(fieldName) {
+    // Use the first report's bucket structure as template
+    const template = reports[0].analytics[fieldName];
+    const merged = template.map(b => ({ ...b, count: 0 }));
+    for (const r of reports) {
+      const buckets = r.analytics[fieldName];
+      for (let i = 0; i < merged.length && i < buckets.length; i++) {
+        merged[i].count += buckets[i].count;
+      }
+    }
+    return merged;
+  }
+
+  const dutyDistribution = mergeBuckets('dutyDistribution');
+  const weightAnalysis = mergeBuckets('weightAnalysis');
+  const invoiceDistribution = mergeBuckets('invoiceDistribution');
+
+  // ── Recompute duty rate by country from merged country totals ──
+  const dutyRateByCountry = countries
+    .filter(c => c.count >= 2 && c.totalInvoice > 0)
+    .map(c => ({
+      code: c.code,
+      count: c.count,
+      totalInvoice: c.totalInvoice,
+      totalDuty: c.totalDuty,
+      effectiveRate: c.totalInvoice > 0 ? (c.totalDuty / c.totalInvoice * 100) : 0,
+    }))
+    .sort((a, b) => b.effectiveRate - a.effectiveRate)
+    .slice(0, 15);
+
+  // ── Broker breakdown (new for overall view) ──
+  const brokerBreakdown = reports.map(r => ({
+    brokerId: r.brokerId,
+    brokerLabel: r.brokerLabel,
+    totalRows: r.analytics.totalRows,
+    totalInvoice: r.analytics.kpis.totalInvoiceValue,
+    totalDuty: r.analytics.kpis.totalDuty,
+    totalVAT: r.analytics.kpis.totalVAT,
+    totalFreight: r.analytics.kpis.totalFreight,
+    totalWeight: r.analytics.kpis.totalWeight,
+  }));
+
+  // ── Per-broker monthly data for stacked comparison chart ──
+  const brokerMonthly = {};
+  for (const r of reports) {
+    brokerMonthly[r.brokerId] = {};
+    for (const m of r.analytics.monthly) {
+      brokerMonthly[r.brokerId][m.key] = m;
+    }
+  }
+
+  return {
+    brokerId: 'OVERALL',
+    totalRows: totalDeclarations,
+    kpis,
+    monthly,
+    countries,
+    hsChapters,
+    currencies,
+    incoterms,
+    procedureCodes,
+    dutyDistribution,
+    weightAnalysis,
+    invoiceDistribution,
+    dutyRateByCountry,
+    brokerBreakdown,
+    brokerMonthly,
+  };
+}
+
 function str(v) {
   if (v == null || v === '') return null;
   return String(v).trim() || null;
@@ -833,30 +1051,42 @@ function createChart(canvasId, config) {
    Render All Charts
    ─────────────────────────────────────────────── */
 
-export function renderCharts(analytics) {
+/**
+ * Render all standard analytics charts.
+ * @param {object} analytics — the analytics object from aggregateData or mergeAnalytics
+ * @param {string} [prefix=''] — canvas ID prefix ('ov-' for overall view)
+ */
+export function renderCharts(analytics, prefix) {
   if (!analytics) return;
+  const p = prefix || '';
 
   destroyCharts();
 
-  renderMonthlyDeclarationsChart(analytics);
-  renderMonthlyFinancialsChart(analytics);
-  renderMonthlyInvoiceChart(analytics);
-  renderCountryChart(analytics);
-  renderHSChaptersChart(analytics);
-  renderCurrencyChart(analytics);
-  renderIncotermChart(analytics);
-  renderDutyDistributionChart(analytics);
-  renderInvoiceDistributionChart(analytics);
-  renderWeightDistributionChart(analytics);
-  renderMonthlyWeightFreightChart(analytics);
-  renderProcedureCodeChart(analytics);
-  renderDutyRateByCountryChart(analytics);
+  renderMonthlyDeclarationsChart(analytics, p);
+  renderMonthlyFinancialsChart(analytics, p);
+  renderMonthlyInvoiceChart(analytics, p);
+  renderCountryChart(analytics, p);
+  renderHSChaptersChart(analytics, p);
+  renderCurrencyChart(analytics, p);
+  renderIncotermChart(analytics, p);
+  renderDutyDistributionChart(analytics, p);
+  renderInvoiceDistributionChart(analytics, p);
+  renderWeightDistributionChart(analytics, p);
+  renderMonthlyWeightFreightChart(analytics, p);
+  renderProcedureCodeChart(analytics, p);
+  renderDutyRateByCountryChart(analytics, p);
+
+  // Broker comparison chart — only for overall views
+  if (analytics.brokerBreakdown && analytics.brokerBreakdown.length > 1) {
+    renderBrokerComparisonChart(analytics, p);
+    renderBrokerMonthlyChart(analytics, p);
+  }
 }
 
-function renderMonthlyDeclarationsChart(a) {
+function renderMonthlyDeclarationsChart(a, p) {
   const m = a.monthly;
   if (m.length === 0) return;
-  createChart('chart-monthly-declarations', {
+  createChart(p + 'chart-monthly-declarations', {
     type: 'bar',
     data: {
       labels: m.map(d => d.label || d.key),
@@ -879,10 +1109,10 @@ function renderMonthlyDeclarationsChart(a) {
   });
 }
 
-function renderMonthlyFinancialsChart(a) {
+function renderMonthlyFinancialsChart(a, p) {
   const m = a.monthly;
   if (m.length === 0) return;
-  createChart('chart-monthly-financials', {
+  createChart(p + 'chart-monthly-financials', {
     type: 'line',
     data: {
       labels: m.map(d => d.label || d.key),
@@ -927,10 +1157,10 @@ function renderMonthlyFinancialsChart(a) {
   });
 }
 
-function renderCountryChart(a) {
+function renderCountryChart(a, p) {
   const top = a.countries.slice(0, 10);
   if (top.length === 0) return;
-  createChart('chart-countries', {
+  createChart(p + 'chart-countries', {
     type: 'doughnut',
     data: {
       labels: top.map(c => c.code),
@@ -955,10 +1185,10 @@ function renderCountryChart(a) {
   });
 }
 
-function renderHSChaptersChart(a) {
+function renderHSChaptersChart(a, p) {
   const top = a.hsChapters.slice(0, 12);
   if (top.length === 0) return;
-  createChart('chart-hs-chapters', {
+  createChart(p + 'chart-hs-chapters', {
     type: 'bar',
     data: {
       labels: top.map(h => 'Ch. ' + h.chapter),
@@ -982,10 +1212,10 @@ function renderHSChaptersChart(a) {
   });
 }
 
-function renderCurrencyChart(a) {
+function renderCurrencyChart(a, p) {
   const cur = a.currencies;
   if (cur.length === 0) return;
-  createChart('chart-currencies', {
+  createChart(p + 'chart-currencies', {
     type: 'pie',
     data: {
       labels: cur.map(c => c.code),
@@ -1004,10 +1234,10 @@ function renderCurrencyChart(a) {
   });
 }
 
-function renderIncotermChart(a) {
+function renderIncotermChart(a, p) {
   const inco = a.incoterms;
   if (inco.length === 0) return;
-  createChart('chart-incoterms', {
+  createChart(p + 'chart-incoterms', {
     type: 'bar',
     data: {
       labels: inco.map(i => i.code),
@@ -1030,10 +1260,10 @@ function renderIncotermChart(a) {
   });
 }
 
-function renderDutyDistributionChart(a) {
+function renderDutyDistributionChart(a, p) {
   const dist = a.dutyDistribution.filter(d => d.count > 0);
   if (dist.length === 0) return;
-  createChart('chart-duty-dist', {
+  createChart(p + 'chart-duty-dist', {
     type: 'bar',
     data: {
       labels: dist.map(d => d.label),
@@ -1056,10 +1286,10 @@ function renderDutyDistributionChart(a) {
   });
 }
 
-function renderWeightDistributionChart(a) {
+function renderWeightDistributionChart(a, p) {
   const dist = a.weightAnalysis.filter(d => d.count > 0);
   if (dist.length === 0) return;
-  createChart('chart-weight-dist', {
+  createChart(p + 'chart-weight-dist', {
     type: 'doughnut',
     data: {
       labels: dist.map(d => d.label),
@@ -1087,7 +1317,7 @@ function renderWeightDistributionChart(a) {
   });
 }
 
-function renderMonthlyWeightFreightChart(a) {
+function renderMonthlyWeightFreightChart(a, p) {
   const m = a.monthly;
   if (m.length === 0) return;
   const hasFreight = m.some(d => d.freight > 0);
@@ -1124,7 +1354,7 @@ function renderMonthlyWeightFreightChart(a) {
     scales.y1 = { ...CHART_DEFAULTS.scales.y, position: 'right', grid: { drawOnChartArea: false } };
   }
 
-  createChart('chart-weight-freight', {
+  createChart(p + 'chart-weight-freight', {
     type: 'line',
     data: { labels: m.map(d => d.label || d.key), datasets },
     options: {
@@ -1135,16 +1365,16 @@ function renderMonthlyWeightFreightChart(a) {
   });
 }
 
-function renderProcedureCodeChart(a) {
+function renderProcedureCodeChart(a, p) {
   const pc = a.procedureCodes;
   if (pc.length === 0) return;
-  createChart('chart-procedures', {
+  createChart(p + 'chart-procedures', {
     type: 'bar',
     data: {
-      labels: pc.map(p => p.code),
+      labels: pc.map(v => v.code),
       datasets: [{
         label: 'Declarations',
-        data: pc.map(p => p.count),
+        data: pc.map(v => v.count),
         backgroundColor: COLORS.secondary + '80',
         borderColor: COLORS.secondary,
         borderWidth: 1,
@@ -1161,12 +1391,12 @@ function renderProcedureCodeChart(a) {
   });
 }
 
-function renderMonthlyInvoiceChart(a) {
+function renderMonthlyInvoiceChart(a, p) {
   const m = a.monthly;
   if (m.length === 0) return;
   const hasInvoice = m.some(d => d.invoice > 0);
   if (!hasInvoice) return;
-  createChart('chart-monthly-invoice', {
+  createChart(p + 'chart-monthly-invoice', {
     type: 'bar',
     data: {
       labels: m.map(d => d.label || d.key),
@@ -1199,10 +1429,10 @@ function renderMonthlyInvoiceChart(a) {
   });
 }
 
-function renderInvoiceDistributionChart(a) {
+function renderInvoiceDistributionChart(a, p) {
   const dist = a.invoiceDistribution.filter(d => d.count > 0);
   if (dist.length === 0) return;
-  createChart('chart-invoice-dist', {
+  createChart(p + 'chart-invoice-dist', {
     type: 'bar',
     data: {
       labels: dist.map(d => d.label),
@@ -1225,11 +1455,11 @@ function renderInvoiceDistributionChart(a) {
   });
 }
 
-function renderDutyRateByCountryChart(a) {
+function renderDutyRateByCountryChart(a, p) {
   const data = a.dutyRateByCountry;
   if (data.length === 0) return;
   const top = data.slice(0, 12);
-  createChart('chart-duty-rate-country', {
+  createChart(p + 'chart-duty-rate-country', {
     type: 'bar',
     data: {
       labels: top.map(d => d.code),
@@ -1274,6 +1504,156 @@ function renderDutyRateByCountryChart(a) {
       },
     },
   });
+}
+
+/* ───────────────────────────────────────────────
+   Broker Comparison Charts (Overall view only)
+   ─────────────────────────────────────────────── */
+
+function renderBrokerComparisonChart(a, p) {
+  const breakdown = a.brokerBreakdown;
+  if (!breakdown || breakdown.length < 2) return;
+
+  const labels = breakdown.map(b => b.brokerLabel);
+  createChart(p + 'chart-broker-comparison', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Declarations',
+          data: breakdown.map(b => b.totalRows),
+          backgroundColor: COLORS.primary + '80',
+          borderColor: COLORS.primary,
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Duty (EUR)',
+          data: breakdown.map(b => b.totalDuty),
+          backgroundColor: COLORS.warning + '80',
+          borderColor: COLORS.warning,
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y1',
+        },
+        {
+          label: 'VAT (EUR)',
+          data: breakdown.map(b => b.totalVAT),
+          backgroundColor: COLORS.secondary + '80',
+          borderColor: COLORS.secondary,
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y1',
+        },
+      ],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins },
+      scales: {
+        x: CHART_DEFAULTS.scales.x,
+        y: {
+          ...CHART_DEFAULTS.scales.y,
+          position: 'left',
+          title: { display: true, text: 'Declarations', color: '#8b949e' },
+        },
+        y1: {
+          ...CHART_DEFAULTS.scales.y,
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'EUR', color: '#8b949e' },
+          ticks: {
+            ...CHART_DEFAULTS.scales.y.ticks,
+            callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v.toFixed(0),
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderBrokerMonthlyChart(a, p) {
+  if (!a.brokerMonthly || !a.brokerBreakdown || a.brokerBreakdown.length < 2) return;
+  // Stacked bar chart: monthly declarations per broker
+  const allMonths = a.monthly.map(m => m.key).sort();
+  const labels = a.monthly.sort((x, y) => x.key.localeCompare(y.key)).map(m => m.label || m.key);
+
+  const datasets = a.brokerBreakdown.map((b, i) => ({
+    label: b.brokerLabel,
+    data: allMonths.map(mk => {
+      const m = (a.brokerMonthly[b.brokerId] || {})[mk];
+      return m ? m.count : 0;
+    }),
+    backgroundColor: COLORS.palette[i % COLORS.palette.length] + '80',
+    borderColor: COLORS.palette[i % COLORS.palette.length],
+    borderWidth: 1,
+    borderRadius: 4,
+  }));
+
+  createChart(p + 'chart-broker-monthly', {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: {
+          ...CHART_DEFAULTS.plugins.tooltip,
+          mode: 'index',
+          intersect: false,
+        },
+      },
+      scales: {
+        x: { ...CHART_DEFAULTS.scales.x, stacked: true },
+        y: { ...CHART_DEFAULTS.scales.y, stacked: true },
+      },
+    },
+  });
+}
+
+/* ───────────────────────────────────────────────
+   Broker Breakdown Table HTML Generator
+   ─────────────────────────────────────────────── */
+
+export function renderBrokerBreakdownTable(breakdown) {
+  if (!breakdown || breakdown.length === 0) return '<p class="no-data">No broker data available</p>';
+
+  const fmtEUR = (v) => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalRows = breakdown.reduce((s, b) => s + b.totalRows, 0);
+
+  const rows = breakdown.map((b, i) => {
+    const share = totalRows > 0 ? (b.totalRows / totalRows * 100).toFixed(1) : '0.0';
+    return `
+      <tr>
+        <td class="rank">${i + 1}</td>
+        <td><span class="country-badge">${b.brokerLabel}</span></td>
+        <td class="mono">${b.totalRows.toLocaleString()}</td>
+        <td class="mono">${share}%</td>
+        <td class="mono">${fmtEUR(b.totalInvoice)}</td>
+        <td class="mono">${fmtEUR(b.totalDuty)}</td>
+        <td class="mono">${fmtEUR(b.totalVAT)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <table class="analytics-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Broker</th>
+          <th>Declarations</th>
+          <th>Share</th>
+          <th>Invoice Value (EUR)</th>
+          <th>Duty (EUR)</th>
+          <th>VAT (EUR)</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
 }
 
 /* ───────────────────────────────────────────────
@@ -1770,6 +2150,69 @@ export const CHART_INFO = {
           'Countries with high rates (>5%) — may indicate non-preferential origins or product categories with significant tariffs.',
           'Hover over bars to see exact duty amounts, invoice values, and declaration counts per country.',
           'Compare with the Country Breakdown table for a complete picture of each origin.',
+        ],
+      },
+    ],
+  },
+  'broker-comparison': {
+    title: 'Broker Comparison',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Multi-axis bar chart comparing all processed brokers side by side. The left axis shows the number of declarations per broker, while the right axis shows financial totals (duty and VAT in EUR). Available only in the Overall Analytics view when reports from two or more brokers have been processed.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Each broker\'s analytics report is stored after processing. The comparison chart shows the total declarations, total customs duty, and total import VAT for each broker. Values are exact sums from each broker\'s consolidated report — no estimation or interpolation is applied.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Volume distribution — which brokers handle the most declarations.',
+          'Cost distribution — which brokers process higher-value or higher-duty shipments.',
+          'Duty/VAT ratios — differences may indicate varying product mixes or origin countries per broker.',
+        ],
+      },
+    ],
+  },
+  'broker-monthly': {
+    title: 'Monthly Declarations by Broker',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Stacked bar chart showing monthly declaration counts broken down by broker. Each color segment represents one broker\'s contribution to the total monthly volume.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Monthly declaration counts from each broker\'s report are stacked for every calendar month. Months are sorted chronologically. If a broker has no data for a given month, its segment is zero.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Broker activity patterns — some brokers may only be active in certain months.',
+          'Volume shifts — changes in broker usage over time may indicate service changes.',
+          'Total monthly volume — the bar height shows combined activity across all brokers.',
+        ],
+      },
+    ],
+  },
+  'broker-table': {
+    title: 'Broker Breakdown Table',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Detailed table comparing all processed brokers with their declaration counts, share percentage, total invoice values, customs duty, and import VAT.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Each row shows one broker\'s totals from its analytics report. The share column shows what percentage of total declarations each broker handles. All financial values are in EUR.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Market share — the share column shows each broker\'s proportion of total import activity.',
+          'Cost efficiency — compare duty and VAT amounts relative to invoice values across brokers.',
+          'Concentration risk — heavy reliance on a single broker may indicate supply chain risk.',
         ],
       },
     ],

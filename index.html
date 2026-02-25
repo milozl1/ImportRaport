@@ -24,6 +24,8 @@
       <span data-step="result">Result</span>
       <span class="sep">›</span>
       <span data-step="analytics">Analytics</span>
+      <span class="sep">›</span>
+      <span data-step="overall">Overall</span>
     </div>
     <div class="spacer"></div>
     <span class="version-badge">v2.0</span>
@@ -265,6 +267,203 @@
         <button class="btn btn-secondary" id="btn-new-session-analytics">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
           New Session
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 5: OVERALL ANALYTICS (CROSS-BROKER) -->
+    <section class="view" id="view-overall">
+      <div class="analytics-header" id="overall-header"></div>
+      <div class="analytics-kpis" id="overall-kpis"></div>
+
+      <!-- Broker comparison (only in overall view) -->
+      <div class="analytics-grid">
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Broker Comparison</div>
+            <button class="chart-info-btn" data-chart="broker-comparison" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-broker-comparison"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Monthly Declarations by Broker</div>
+            <button class="chart-info-btn" data-chart="broker-monthly" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-broker-monthly"></canvas></div>
+        </div>
+
+        <!-- Row 1: Monthly trends -->
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Monthly Declarations</div>
+            <button class="chart-info-btn" data-chart="monthly-declarations" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-monthly-declarations"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Monthly Duty &amp; VAT</div>
+            <button class="chart-info-btn" data-chart="monthly-financials" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-monthly-financials"></canvas></div>
+        </div>
+
+        <!-- Row 2: Invoice & Duty Rate -->
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Monthly Invoice Value</div>
+            <button class="chart-info-btn" data-chart="monthly-invoice" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-monthly-invoice"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Effective Duty Rate by Country</div>
+            <button class="chart-info-btn" data-chart="duty-rate-country" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-duty-rate-country"></canvas></div>
+        </div>
+
+        <!-- Row 3: Country + HS -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Country of Origin</div>
+            <button class="chart-info-btn" data-chart="countries" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body chart-body-square"><canvas id="ov-chart-countries"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Top HS Code Chapters</div>
+            <button class="chart-info-btn" data-chart="hs-chapters" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-hs-chapters"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Invoice Currencies</div>
+            <button class="chart-info-btn" data-chart="currencies" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body chart-body-square"><canvas id="ov-chart-currencies"></canvas></div>
+        </div>
+
+        <!-- Row 4: Distributions -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Incoterm Distribution</div>
+            <button class="chart-info-btn" data-chart="incoterms" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-incoterms"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Duty Amount Distribution</div>
+            <button class="chart-info-btn" data-chart="duty-dist" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-duty-dist"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Invoice Value Distribution</div>
+            <button class="chart-info-btn" data-chart="invoice-dist" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-invoice-dist"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Procedure Codes</div>
+            <button class="chart-info-btn" data-chart="procedures" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-procedures"></canvas></div>
+        </div>
+
+        <!-- Row 5: Weight analysis -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Weight Distribution</div>
+            <button class="chart-info-btn" data-chart="weight-dist" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body chart-body-square"><canvas id="ov-chart-weight-dist"></canvas></div>
+        </div>
+        <div class="chart-card span-3">
+          <div class="chart-header">
+            <div class="chart-title">Monthly Weight &amp; Freight</div>
+            <button class="chart-info-btn" data-chart="weight-freight" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="ov-chart-weight-freight"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Data tables -->
+      <div class="analytics-tables">
+        <div class="analytics-table-section">
+          <div class="chart-header">
+            <h3 class="table-section-title">Broker Breakdown</h3>
+            <button class="chart-info-btn" data-chart="broker-table" title="About this table">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div id="overall-broker-table"></div>
+        </div>
+        <div class="analytics-table-section">
+          <div class="chart-header">
+            <h3 class="table-section-title">Country Breakdown</h3>
+            <button class="chart-info-btn" data-chart="country-table" title="About this table">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div id="overall-country-table"></div>
+        </div>
+        <div class="analytics-table-section">
+          <div class="chart-header">
+            <h3 class="table-section-title">HS Code Analysis</h3>
+            <button class="chart-info-btn" data-chart="hs-table" title="About this table">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div id="overall-hs-table"></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="btn-back-broker-overall">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back to Brokers
+        </button>
+        <button class="btn btn-secondary" id="btn-clear-reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Clear All Reports
         </button>
       </div>
     </section>

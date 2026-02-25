@@ -5,7 +5,7 @@
 
 import { BROKERS } from './brokers.js';
 import { mergeFiles, downloadExcel } from './engine.js';
-import { aggregateData, renderCharts, renderKPICards, renderCountryTable, renderHSTable, CHART_INFO } from './analytics.js';
+import { aggregateData, mergeAnalytics, renderCharts, renderKPICards, renderCountryTable, renderHSTable, renderBrokerBreakdownTable, CHART_INFO } from './analytics.js';
 
 /* ───────────────────────────────────────────────
    State
@@ -14,6 +14,7 @@ import { aggregateData, renderCharts, renderKPICards, renderCountryTable, render
 let selectedBroker = null;
 let uploadedFiles = [];
 let mergedResult = null;   // { headers, data, stats }
+let storedReports = [];    // { brokerId, brokerLabel, analytics } per processed broker
 
 /* ───────────────────────────────────────────────
    DOM refs
@@ -25,6 +26,7 @@ const views = {
   upload: $('#view-upload'),
   result: $('#view-result'),
   analytics: $('#view-analytics'),
+  overall: $('#view-overall'),
 };
 
 /* ───────────────────────────────────────────────
@@ -97,15 +99,21 @@ function hideLoading() {
 
 function renderBrokerGrid() {
   const grid = $('#broker-grid');
+  const processedIds = new Set(storedReports.map(r => r.brokerId));
+
   grid.innerHTML = BROKERS.map(b => {
     const caps = (b.capabilities || []).map(c =>
       `<li class="cap-item"><span class="cap-text">${c.text}</span></li>`
     ).join('');
+    const badge = processedIds.has(b.id)
+      ? `<span class="broker-badge-done" title="Report stored for overall analytics">${IC.check} Processed</span>`
+      : '';
     return `
     <div class="broker-card" data-broker="${b.id}" style="--broker-color:${b.color}; --broker-accent:${b.accent}">
       <div class="broker-logo">${b.logoIcon}</div>
       <div class="broker-name">${b.label}</div>
       <div class="broker-tag">${b.headerRows} header row${b.headerRows > 1 ? 's' : ''}</div>
+      ${badge}
       <div class="broker-capabilities">
         <div class="cap-title">What this module does</div>
         <ul class="cap-list">${caps}</ul>
@@ -113,6 +121,9 @@ function renderBrokerGrid() {
     </div>
   `;
   }).join('');
+
+  // Overall Analytics button (visible when ≥1 report stored)
+  renderOverallButton();
 
   grid.addEventListener('click', (e) => {
     const card = e.target.closest('.broker-card');
@@ -131,6 +142,50 @@ function renderBrokerGrid() {
       renderActiveBrokerBanner();
       showView('upload');
     }, 200);
+  });
+}
+
+function renderOverallButton() {
+  // Remove existing if present
+  const existing = document.getElementById('overall-analytics-section');
+  if (existing) existing.remove();
+
+  if (storedReports.length === 0) return;
+
+  const section = document.createElement('div');
+  section.id = 'overall-analytics-section';
+  section.className = 'overall-analytics-section';
+
+  const brokerNames = storedReports.map(r => r.brokerLabel).join(', ');
+  const totalRows = storedReports.reduce((s, r) => s + r.analytics.totalRows, 0);
+
+  section.innerHTML = `
+    <div class="overall-banner">
+      <div class="overall-banner-info">
+        <div class="overall-banner-title">Overall Analytics</div>
+        <div class="overall-banner-subtitle">${storedReports.length} broker${storedReports.length > 1 ? 's' : ''} processed: ${brokerNames} — ${totalRows.toLocaleString()} total declarations</div>
+      </div>
+      <div class="overall-banner-actions">
+        <button class="btn btn-primary" id="btn-open-overall">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          View Overall Dashboard
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btn-clear-stored" title="Clear all stored reports">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Clear
+        </button>
+      </div>
+    </div>
+  `;
+
+  const brokerView = $('#view-broker');
+  brokerView.appendChild(section);
+
+  document.getElementById('btn-open-overall').addEventListener('click', handleOpenOverallAnalytics);
+  document.getElementById('btn-clear-stored').addEventListener('click', () => {
+    storedReports = [];
+    renderBrokerGrid();
+    toast('All stored reports cleared', 'info');
   });
 }
 
@@ -731,10 +786,23 @@ function handleOpenAnalytics() {
         return;
       }
 
+      // Store report for overall analytics (replace if same broker processed again)
+      const existingIdx = storedReports.findIndex(r => r.brokerId === selectedBroker.id);
+      const report = {
+        brokerId: selectedBroker.id,
+        brokerLabel: selectedBroker.label,
+        analytics,
+      };
+      if (existingIdx >= 0) {
+        storedReports[existingIdx] = report;
+      } else {
+        storedReports.push(report);
+      }
+
       renderAnalyticsDashboard(analytics);
       hideLoading();
       showView('analytics');
-      toast('Analytics dashboard ready', 'success');
+      toast('Analytics dashboard ready — report stored for overall view', 'success');
     } catch (err) {
       hideLoading();
       toast('Analytics failed: ' + err.message, 'error');
@@ -778,6 +846,76 @@ function renderAnalyticsDashboard(analytics) {
 }
 
 /* ───────────────────────────────────────────────
+   Overall Analytics handler
+   ─────────────────────────────────────────────── */
+
+function handleOpenOverallAnalytics() {
+  if (storedReports.length === 0) {
+    toast('No reports stored yet — process at least one broker first', 'error');
+    return;
+  }
+
+  showLoading('Building overall analytics…');
+
+  setTimeout(() => {
+    try {
+      const overall = mergeAnalytics(storedReports);
+      if (!overall) {
+        hideLoading();
+        toast('Could not merge reports', 'error');
+        return;
+      }
+
+      renderOverallDashboard(overall);
+      hideLoading();
+      showView('overall');
+      toast(`Overall dashboard ready — ${storedReports.length} broker${storedReports.length > 1 ? 's' : ''} combined`, 'success');
+    } catch (err) {
+      hideLoading();
+      toast('Overall analytics failed: ' + err.message, 'error');
+      console.error(err);
+    }
+  }, 50);
+}
+
+function renderOverallDashboard(overall) {
+  const brokerNames = storedReports.map(r => r.brokerLabel).join(', ');
+
+  // Header
+  $('#overall-header').innerHTML = `
+    <div class="broker-logo-lg">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+    </div>
+    <div class="result-info">
+      <h2>Overall Import Analytics</h2>
+      <p>${storedReports.length} broker${storedReports.length > 1 ? 's' : ''}: ${brokerNames} — ${overall.totalRows.toLocaleString()} declarations · ${overall.kpis.monthsCovered} month${overall.kpis.monthsCovered !== 1 ? 's' : ''} · ${overall.kpis.uniqueCountries} countr${overall.kpis.uniqueCountries !== 1 ? 'ies' : 'y'}</p>
+    </div>
+  `;
+
+  // KPI cards
+  const kpiInfoBtn = `<button class="chart-info-btn" data-chart="kpis" title="About these metrics">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+  </button>`;
+  $('#overall-kpis').innerHTML = `
+    <div class="chart-header kpi-section-header">
+      <h3 class="table-section-title">Key Performance Indicators</h3>
+      ${kpiInfoBtn}
+    </div>
+    ${renderKPICards(overall.kpis)}
+  `;
+
+  // Tables
+  $('#overall-broker-table').innerHTML = renderBrokerBreakdownTable(overall.brokerBreakdown);
+  $('#overall-country-table').innerHTML = renderCountryTable(overall.countries);
+  $('#overall-hs-table').innerHTML = renderHSTable(overall.hsChapters);
+
+  // Charts (with ov- prefix for overall canvas IDs)
+  requestAnimationFrame(() => {
+    renderCharts(overall, 'ov-');
+  });
+}
+
+/* ───────────────────────────────────────────────
    Init
    ─────────────────────────────────────────────── */
 
@@ -789,6 +927,7 @@ function init() {
   $('#btn-back-broker').addEventListener('click', () => {
     uploadedFiles = [];
     renderFileList();
+    renderBrokerGrid();
     showView('broker');
   });
 
@@ -800,6 +939,7 @@ function init() {
     selectedBroker = null;
     uploadedFiles = [];
     mergedResult = null;
+    renderBrokerGrid();
     showView('broker');
   });
 
@@ -811,7 +951,20 @@ function init() {
     selectedBroker = null;
     uploadedFiles = [];
     mergedResult = null;
+    renderBrokerGrid();
     showView('broker');
+  });
+
+  // Overall Analytics buttons
+  $('#btn-back-broker-overall').addEventListener('click', () => {
+    renderBrokerGrid();
+    showView('broker');
+  });
+  $('#btn-clear-reports').addEventListener('click', () => {
+    storedReports = [];
+    renderBrokerGrid();
+    showView('broker');
+    toast('All stored reports cleared', 'info');
   });
 
   // Modal close (report)
