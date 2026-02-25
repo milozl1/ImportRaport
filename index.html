@@ -123,7 +123,27 @@
           <div class="chart-body"><canvas id="chart-monthly-financials"></canvas></div>
         </div>
 
-        <!-- Row 2: Country + HS -->
+        <!-- Row 2: Invoice & Duty Rate trends -->
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Monthly Invoice Value</div>
+            <button class="chart-info-btn" data-chart="monthly-invoice" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="chart-monthly-invoice"></canvas></div>
+        </div>
+        <div class="chart-card span-2">
+          <div class="chart-header">
+            <div class="chart-title">Effective Duty Rate by Country</div>
+            <button class="chart-info-btn" data-chart="duty-rate-country" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body"><canvas id="chart-duty-rate-country"></canvas></div>
+        </div>
+
+        <!-- Row 3: Country + HS -->
         <div class="chart-card">
           <div class="chart-header">
             <div class="chart-title">Country of Origin</div>
@@ -152,7 +172,7 @@
           <div class="chart-body chart-body-square"><canvas id="chart-currencies"></canvas></div>
         </div>
 
-        <!-- Row 3: Distribution -->
+        <!-- Row 4: Distributions -->
         <div class="chart-card">
           <div class="chart-header">
             <div class="chart-title">Incoterm Distribution</div>
@@ -173,12 +193,12 @@
         </div>
         <div class="chart-card">
           <div class="chart-header">
-            <div class="chart-title">Weight Distribution</div>
-            <button class="chart-info-btn" data-chart="weight-dist" title="About this chart">
+            <div class="chart-title">Invoice Value Distribution</div>
+            <button class="chart-info-btn" data-chart="invoice-dist" title="About this chart">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
             </button>
           </div>
-          <div class="chart-body chart-body-square"><canvas id="chart-weight-dist"></canvas></div>
+          <div class="chart-body"><canvas id="chart-invoice-dist"></canvas></div>
         </div>
         <div class="chart-card">
           <div class="chart-header">
@@ -190,8 +210,17 @@
           <div class="chart-body"><canvas id="chart-procedures"></canvas></div>
         </div>
 
-        <!-- Row 4: Weight & Freight trends -->
-        <div class="chart-card span-full">
+        <!-- Row 5: Weight analysis -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Weight Distribution</div>
+            <button class="chart-info-btn" data-chart="weight-dist" title="About this chart">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+          </div>
+          <div class="chart-body chart-body-square"><canvas id="chart-weight-dist"></canvas></div>
+        </div>
+        <div class="chart-card span-3">
           <div class="chart-header">
             <div class="chart-title">Monthly Weight &amp; Freight</div>
             <button class="chart-info-btn" data-chart="weight-freight" title="About this chart">

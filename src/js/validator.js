@@ -665,6 +665,36 @@ function excelTimeToString(serial) {
 }
 
 /**
+ * Convert compressed numeric date (DMMYYYY or DDMMYYYY) to DD.MM.YYYY.
+ * Used by Luftfracht XLSX files where dates are stored as raw numbers:
+ *   7052025   → 07.05.2025
+ *   12052025  → 12.05.2025
+ *   2062025   → 02.06.2025
+ *   27062025  → 27.06.2025
+ */
+function compressedNumericToDate(v) {
+  if (typeof v !== 'number' || v < 1000000 || v > 99999999) return null;
+  const s = String(v);
+  let day, month, year;
+  if (s.length === 7) {
+    // DMMYYYY
+    day = s.substring(0, 1);
+    month = s.substring(1, 3);
+    year = s.substring(3, 7);
+  } else if (s.length === 8) {
+    // DDMMYYYY
+    day = s.substring(0, 2);
+    month = s.substring(2, 4);
+    year = s.substring(4, 8);
+  } else {
+    return null;
+  }
+  const d = +day, m = +month, y = +year;
+  if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2000 || y > 2100) return null;
+  return `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`;
+}
+
+/**
  * Build a header→column-index map. Normalises header names by
  * lowercasing so that UTF-8 / latin1 encoding mismatches don't
  * prevent a match.
@@ -761,6 +791,14 @@ function validateAndFixDSV(data, report, headers) {
           row[col] = formatted;
           report.numberFixes++;
           report.issues.push({ row: r + 1, type: 'date', detail: `Col ${col}: ${v} → "${formatted}" (serial→date)` });
+        }
+      } else if (v > 1000000 && v < 99999999) {
+        // Compressed DMMYYYY or DDMMYYYY (e.g. 7052025 = 07.05.2025)
+        const formatted = compressedNumericToDate(v);
+        if (formatted) {
+          row[col] = formatted;
+          report.numberFixes++;
+          report.issues.push({ row: r + 1, type: 'date', detail: `Col ${col}: ${v} → "${formatted}" (compressed→date)` });
         }
       }
     }

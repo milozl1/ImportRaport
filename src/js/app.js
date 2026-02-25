@@ -60,6 +60,9 @@ function showView(name) {
   document.querySelectorAll('#breadcrumb [data-step]').forEach(el => {
     el.classList.toggle('active-step', el.dataset.step === name);
   });
+
+  // Scroll to top when switching views
+  window.scrollTo(0, 0);
 }
 
 /* ───────────────────────────────────────────────

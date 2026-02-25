@@ -456,6 +456,8 @@ export function aggregateData(headers, data, brokerId) {
     procedureCodes:     computeProcedureCodes(records),
     dutyDistribution:   computeDutyDistribution(records),
     weightAnalysis:     computeWeightAnalysis(records),
+    invoiceDistribution: computeInvoiceDistribution(records),
+    dutyRateByCountry:   computeDutyRateByCountry(records),
   };
 }
 
@@ -667,6 +669,56 @@ function computeWeightAnalysis(records) {
   return dist;
 }
 
+/* ───── Invoice Value Distribution ───── */
+
+function computeInvoiceDistribution(records) {
+  const ranges = [
+    { label: '< 50 EUR',       min: 0,      max: 50 },
+    { label: '50 - 200 EUR',   min: 50,     max: 200 },
+    { label: '200 - 500 EUR',  min: 200,    max: 500 },
+    { label: '500 - 1K EUR',   min: 500,    max: 1000 },
+    { label: '1K - 5K EUR',    min: 1000,   max: 5000 },
+    { label: '5K - 20K EUR',   min: 5000,   max: 20000 },
+    { label: '20K+ EUR',       min: 20000,  max: Infinity },
+  ];
+  const dist = ranges.map(r => ({ ...r, count: 0 }));
+  for (const r of records) {
+    const v = r.invoiceValue ?? r.invoiceEUR;
+    if (v == null || v <= 0) continue;
+    for (const bucket of dist) {
+      if (v >= bucket.min && v < bucket.max) { bucket.count++; break; }
+    }
+  }
+  return dist;
+}
+
+/* ───── Effective Duty Rate by Country ───── */
+
+function computeDutyRateByCountry(records) {
+  const byCountry = {};
+  for (const r of records) {
+    const c = r.countryOfOrigin || r.shipperCountry;
+    if (!c) continue;
+    const inv = r.invoiceValue ?? r.invoiceEUR;
+    if (inv == null || inv <= 0) continue;
+    if (!byCountry[c]) byCountry[c] = { code: c, totalInvoice: 0, totalDuty: 0, count: 0 };
+    byCountry[c].totalInvoice += inv;
+    if (r.dutyAmount != null) byCountry[c].totalDuty += r.dutyAmount;
+    byCountry[c].count++;
+  }
+  return Object.values(byCountry)
+    .filter(c => c.count >= 2)              // require at least 2 declarations for meaningful rate
+    .map(c => ({
+      code: c.code,
+      count: c.count,
+      totalInvoice: c.totalInvoice,
+      totalDuty: c.totalDuty,
+      effectiveRate: c.totalInvoice > 0 ? (c.totalDuty / c.totalInvoice * 100) : 0,
+    }))
+    .sort((a, b) => b.effectiveRate - a.effectiveRate)
+    .slice(0, 15);
+}
+
 /* ───── Auto-detect for generic brokers ───── */
 
 function autoDetectColumns(headers) {
@@ -788,14 +840,17 @@ export function renderCharts(analytics) {
 
   renderMonthlyDeclarationsChart(analytics);
   renderMonthlyFinancialsChart(analytics);
+  renderMonthlyInvoiceChart(analytics);
   renderCountryChart(analytics);
   renderHSChaptersChart(analytics);
   renderCurrencyChart(analytics);
   renderIncotermChart(analytics);
   renderDutyDistributionChart(analytics);
+  renderInvoiceDistributionChart(analytics);
   renderWeightDistributionChart(analytics);
   renderMonthlyWeightFreightChart(analytics);
   renderProcedureCodeChart(analytics);
+  renderDutyRateByCountryChart(analytics);
 }
 
 function renderMonthlyDeclarationsChart(a) {
@@ -1101,6 +1156,121 @@ function renderProcedureCodeChart(a) {
       plugins: {
         ...CHART_DEFAULTS.plugins,
         legend: { display: false },
+      },
+    },
+  });
+}
+
+function renderMonthlyInvoiceChart(a) {
+  const m = a.monthly;
+  if (m.length === 0) return;
+  const hasInvoice = m.some(d => d.invoice > 0);
+  if (!hasInvoice) return;
+  createChart('chart-monthly-invoice', {
+    type: 'bar',
+    data: {
+      labels: m.map(d => d.label || d.key),
+      datasets: [{
+        label: 'Invoice Value (EUR)',
+        data: m.map(d => d.invoice),
+        backgroundColor: COLORS.success + '80',
+        borderColor: COLORS.success,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        title: { display: false },
+      },
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        y: {
+          ...CHART_DEFAULTS.scales.y,
+          ticks: {
+            ...CHART_DEFAULTS.scales.y.ticks,
+            callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v.toFixed(0),
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderInvoiceDistributionChart(a) {
+  const dist = a.invoiceDistribution.filter(d => d.count > 0);
+  if (dist.length === 0) return;
+  createChart('chart-invoice-dist', {
+    type: 'bar',
+    data: {
+      labels: dist.map(d => d.label),
+      datasets: [{
+        label: 'Declarations',
+        data: dist.map(d => d.count),
+        backgroundColor: COLORS.success + '80',
+        borderColor: COLORS.success,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        legend: { display: false },
+      },
+    },
+  });
+}
+
+function renderDutyRateByCountryChart(a) {
+  const data = a.dutyRateByCountry;
+  if (data.length === 0) return;
+  const top = data.slice(0, 12);
+  createChart('chart-duty-rate-country', {
+    type: 'bar',
+    data: {
+      labels: top.map(d => d.code),
+      datasets: [{
+        label: 'Effective Duty Rate (%)',
+        data: top.map(d => d.effectiveRate),
+        backgroundColor: COLORS.danger + '80',
+        borderColor: COLORS.danger,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        legend: { display: false },
+        tooltip: {
+          ...CHART_DEFAULTS.plugins.tooltip,
+          callbacks: {
+            label: (ctx) => {
+              const d = top[ctx.dataIndex];
+              return [
+                `Rate: ${d.effectiveRate.toFixed(2)}%`,
+                `Duty: ${d.totalDuty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`,
+                `Invoice: ${d.totalInvoice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`,
+                `Declarations: ${d.count}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        y: {
+          ...CHART_DEFAULTS.scales.y,
+          ticks: {
+            ...CHART_DEFAULTS.scales.y.ticks,
+            callback: v => v.toFixed(1) + '%',
+          },
+        },
       },
     },
   });
@@ -1530,6 +1700,76 @@ export const CHART_INFO = {
         list: [
           'High-duty chapters may benefit from tariff classification review.',
           'Sample descriptions help verify that HS codes are correctly assigned to the right product categories.',
+        ],
+      },
+    ],
+  },
+  'monthly-invoice': {
+    title: 'Monthly Invoice Value',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Bar chart showing the total invoice value (goods value) per calendar month in EUR. This is the primary financial indicator of import volume, representing the total declared value of goods before customs duties and taxes.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'For each declaration, the invoice value (or EUR-converted invoice value if available) is summed per month. Rows without a positive invoice value are excluded. The y-axis uses "k" notation for thousands.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Seasonal spending patterns — peaks may correlate with production schedules or seasonal demand.',
+          'Budget tracking — compare monthly totals against procurement budgets.',
+          'Growth trends — increasing values may indicate expanding operations or price inflation.',
+          'Compare with the Monthly Duty & VAT chart to see how tax burden correlates with goods value.',
+        ],
+      },
+    ],
+  },
+  'invoice-dist': {
+    title: 'Invoice Value Distribution',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Bar chart showing how many individual declarations fall into each invoice value range (in EUR). Visualizes the scale and frequency distribution of shipment values.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The invoice value per declaration is placed into one of seven brackets: under 50, 50-200, 200-500, 500-1K, 1K-5K, 5K-20K, or 20K+ EUR. Each bar shows the count of declarations in that range.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Many low-value shipments may indicate express/sample traffic — consider consolidation to reduce per-shipment fees.',
+          'A few very high-value shipments dominating total spend — these warrant closer duty optimization attention.',
+          'Customs de minimis thresholds — shipments below certain values may qualify for simplified procedures.',
+        ],
+      },
+    ],
+  },
+  'duty-rate-country': {
+    title: 'Effective Duty Rate by Country',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Bar chart showing the effective customs duty rate for each country of origin, calculated as total duty paid divided by total invoice value. Countries are sorted from highest to lowest rate.',
+      },
+      {
+        heading: 'How it is calculated',
+        list: [
+          'For each country, all invoice values and duty amounts are summed.',
+          'Effective rate = total duty / total invoice value * 100%.',
+          'Only countries with at least 2 declarations are included to avoid statistical noise.',
+          'Up to 12 countries are shown, sorted by rate (highest first).',
+        ],
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Countries with 0% effective rate — goods from these origins may benefit from Free Trade Agreements (FTA) or preferential tariffs.',
+          'Countries with high rates (>5%) — may indicate non-preferential origins or product categories with significant tariffs.',
+          'Hover over bars to see exact duty amounts, invoice values, and declaration counts per country.',
+          'Compare with the Country Breakdown table for a complete picture of each origin.',
         ],
       },
     ],

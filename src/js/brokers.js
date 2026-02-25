@@ -236,7 +236,10 @@ export const BROKERS = [
     isFooterRow: (row) => {
       if (!row || row.length < 2) return true;
       const nonEmpty = row.filter(c => c != null && c !== '');
-      return nonEmpty.length < 2;
+      if (nonEmpty.length < 2) return true;
+      // Rows where every cell is 0 or empty are not real data
+      const meaningful = row.filter(c => c != null && c !== '' && c !== 0 && c !== '0' && c !== '0,00' && c !== '0,000000');
+      return meaningful.length < 2;
     },
   },
   {
