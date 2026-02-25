@@ -5,7 +5,7 @@
 
 import { BROKERS } from './brokers.js';
 import { mergeFiles, downloadExcel } from './engine.js';
-import { aggregateData, renderCharts, renderKPICards, renderCountryTable, renderHSTable } from './analytics.js';
+import { aggregateData, renderCharts, renderKPICards, renderCountryTable, renderHSTable, CHART_INFO } from './analytics.js';
 
 /* ───────────────────────────────────────────────
    State
@@ -676,6 +676,40 @@ function handleDownload() {
 }
 
 /* ───────────────────────────────────────────────
+   Chart Info Modal
+   ─────────────────────────────────────────────── */
+
+function openChartInfo(chartId) {
+  const info = CHART_INFO[chartId];
+  if (!info) return;
+
+  $('#chart-info-title').textContent = info.title;
+
+  const body = info.sections.map((s) => {
+    let content = '';
+    if (s.text) {
+      content = `<p>${s.text}</p>`;
+    }
+    if (s.list) {
+      content += '<ul>' + s.list.map((li) => `<li>${li}</li>`).join('') + '</ul>';
+    }
+    return `
+      <div class="chart-info-section">
+        <h4>${s.heading}</h4>
+        ${content}
+      </div>
+    `;
+  }).join('');
+
+  $('#chart-info-body').innerHTML = body;
+  $('#chart-info-modal').classList.add('active');
+}
+
+function closeChartInfo() {
+  $('#chart-info-modal').classList.remove('active');
+}
+
+/* ───────────────────────────────────────────────
    Analytics handler
    ─────────────────────────────────────────────── */
 
@@ -718,8 +752,17 @@ function renderAnalyticsDashboard(analytics) {
     </div>
   `;
 
-  // KPI cards
-  $('#analytics-kpis').innerHTML = renderKPICards(analytics.kpis);
+  // KPI cards — inject header with info button + card grid
+  const kpiInfoBtn = `<button class="chart-info-btn" data-chart="kpis" title="About these metrics">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+  </button>`;
+  $('#analytics-kpis').innerHTML = `
+    <div class="chart-header kpi-section-header">
+      <h3 class="table-section-title">Key Performance Indicators</h3>
+      ${kpiInfoBtn}
+    </div>
+    ${renderKPICards(analytics.kpis)}
+  `;
 
   // Country & HS tables
   $('#analytics-country-table').innerHTML = renderCountryTable(analytics.countries);
@@ -768,14 +811,32 @@ function init() {
     showView('broker');
   });
 
-  // Modal close
+  // Modal close (report)
   $('#modal-close').addEventListener('click', closeReportModal);
   $('#report-modal').addEventListener('click', (e) => {
     if (e.target === $('#report-modal')) closeReportModal();
   });
+
+  // Chart info modal — delegated click handler
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chart-info-btn');
+    if (btn) {
+      const chartId = btn.getAttribute('data-chart');
+      if (chartId) openChartInfo(chartId);
+    }
+  });
+
+  // Chart info modal — close handlers
+  $('#chart-info-close').addEventListener('click', closeChartInfo);
+  $('#chart-info-modal').addEventListener('click', (e) => {
+    if (e.target === $('#chart-info-modal')) closeChartInfo();
+  });
+
+  // Escape key — close whichever modal is open
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && $('#report-modal').classList.contains('active')) {
-      closeReportModal();
+    if (e.key === 'Escape') {
+      if ($('#chart-info-modal').classList.contains('active')) closeChartInfo();
+      else if ($('#report-modal').classList.contains('active')) closeReportModal();
     }
   });
 }

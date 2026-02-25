@@ -1240,3 +1240,298 @@ export function renderHSTable(hsChapters) {
     </table>
   `;
 }
+
+/* ───────────────────────────────────────────────
+   Chart Info Descriptions
+   ─────────────────────────────────────────────── */
+
+/**
+ * Descriptive information for each chart/table/KPI section.
+ * Used by the info icon modal to explain what each visualization shows,
+ * how the data was obtained, and what to look for.
+ */
+export const CHART_INFO = {
+  'kpis': {
+    title: 'Key Performance Indicators',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Summary metrics computed from all declarations in the consolidated report. Provides a high-level overview of import activity, financial exposure, and geographic diversity.',
+      },
+      {
+        heading: 'How it is calculated',
+        list: [
+          'Total Declarations — number of data rows in the merged report (one row = one customs declaration line item).',
+          'Total Invoice Value — sum of all invoice amounts. For rows with foreign currency, the original invoice value is used (not converted to EUR).',
+          'Total Customs Duty — sum of all duty amounts assessed by customs authorities.',
+          'Total Import VAT (EUSt) — sum of all import VAT amounts. For brokers without a direct VAT column, it is computed as EUSt assessment basis × VAT rate.',
+          'Effective Duty Rate — total duty ÷ total invoice value × 100. Shows the average customs duty burden as a percentage of goods value.',
+          'Total Freight — sum of all freight/transport cost values where available.',
+          'Total Weight — sum of gross weight values (kg) across all shipments.',
+          'Countries of Origin — count of distinct origin countries appearing in the data.',
+          'HS Chapters — count of distinct 2-digit HS chapters (product categories).',
+          'Months Covered — number of distinct calendar months represented.',
+        ],
+      },
+      {
+        heading: 'Data source',
+        text: 'Extracted from broker-specific columns in the consolidated report. Column mapping varies by broker (index-based for DHL/FedEx/UPS, header-name-based for DSV). Values with European number formats (comma decimal) are automatically converted.',
+      },
+    ],
+  },
+  'monthly-declarations': {
+    title: 'Monthly Declarations',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Number of customs declarations per calendar month, displayed as a bar chart. Each bar represents one month and its height corresponds to the total number of declaration line items processed in that period.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Each row in the consolidated report has a date field (declaration date or entry date). The date is parsed and grouped by year-month. Rows without a parseable date are grouped under "N/A".',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Seasonal patterns — months with spikes may indicate bulk purchasing or project-based imports.',
+          'Missing months — gaps may indicate missing source files or reporting delays.',
+          'Growth trends — consistent increase may signal expanding import activity.',
+        ],
+      },
+    ],
+  },
+  'monthly-financials': {
+    title: 'Monthly Duty & VAT',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Two overlapping area lines showing the monthly total of customs duty (yellow) and import VAT/EUSt (purple). The y-axis is in EUR with "k" suffix for thousands.',
+      },
+      {
+        heading: 'How it is calculated',
+        list: [
+          'Duty — sum of all duty amounts per month. Source column depends on broker: DHL uses col 123 (duty amount), FedEx col 91 (ZOLL), UPS col 32 (Zoll Betrag in Euro), DSV uses AbgabeZoll or equivalent.',
+          'VAT — sum of all VAT/EUSt amounts per month. For FedEx, where no direct VAT amount column exists, it is computed as EUSt basis × VAT rate (default 19%).',
+        ],
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'VAT typically dominates duty because the standard import VAT rate (19%) applies to goods value + duty, while duty rates vary (often 0–5%).',
+          'Months with disproportionately high duty may indicate tariff reclassifications or imports from non-preferential countries.',
+        ],
+      },
+    ],
+  },
+  'countries': {
+    title: 'Country of Origin',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Doughnut chart showing the top 10 countries of origin by number of declarations. Each segment represents one country with its ISO 3166-1 alpha-2 code.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The country of origin field is extracted per row. If only a shipper country is available, it is used as fallback. German country names (e.g. "Mexiko", "Tschechien") are automatically converted to 2-letter ISO codes. The top 10 countries by declaration count are shown.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Supply chain concentration — heavy reliance on one country may indicate risk.',
+          'EU vs non-EU split — EU-origin goods typically have zero or reduced duty under preferential trade agreements.',
+        ],
+      },
+    ],
+  },
+  'hs-chapters': {
+    title: 'Top HS Code Chapters',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Horizontal bar chart showing the most frequently imported HS code chapters. HS chapters are the first 2 digits of the Harmonized System tariff code, representing broad product categories.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The HS code from each declaration row is truncated to its first 2 digits. Rows are grouped and counted by chapter. Up to 12 chapters are shown, sorted by frequency.',
+      },
+      {
+        heading: 'Common chapters',
+        list: [
+          'Ch. 85 — Electrical machinery, equipment, and parts (lamps, LED, circuit boards).',
+          'Ch. 84 — Machinery, mechanical appliances, and parts.',
+          'Ch. 90 — Optical, measuring, and precision instruments.',
+          'Ch. 39 — Plastics and articles thereof.',
+          'Ch. 73 — Articles of iron or steel.',
+        ],
+      },
+    ],
+  },
+  'currencies': {
+    title: 'Invoice Currencies',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Pie chart showing the distribution of invoice currencies used across all declarations. Each segment represents one currency code (EUR, USD, CNY, etc.).',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The currency field is extracted from each row and grouped by 3-letter ISO currency code. Segments show the count of declarations per currency. Invalid or missing currency values are excluded.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'EUR dominance indicates direct European suppliers or EUR-denominated contracts.',
+          'USD, CNY, JPY segments indicate significant non-EU sourcing that may carry exchange rate risk.',
+        ],
+      },
+    ],
+  },
+  'incoterms': {
+    title: 'Incoterm Distribution',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Bar chart showing how many declarations use each Incoterm (International Commercial Terms). Incoterms define who is responsible for shipping costs, insurance, and risk.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The Incoterm field is extracted from each row. Values longer than 5 characters are filtered out (likely data errors). Bars are sorted by frequency.',
+      },
+      {
+        heading: 'Common incoterms',
+        list: [
+          'EXW (Ex Works) — buyer bears all shipping costs and risks from seller\'s premises.',
+          'DAP (Delivered at Place) — seller delivers goods to a named destination.',
+          'FCA (Free Carrier) — seller delivers to carrier at named place.',
+          'FOB (Free on Board) — seller delivers goods on board the vessel.',
+          'DDP (Delivered Duty Paid) — seller bears all costs including import duties.',
+        ],
+      },
+    ],
+  },
+  'duty-dist': {
+    title: 'Duty Amount Distribution',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Bar chart showing how many declarations fall into each duty amount range (in EUR). Helps visualize whether most shipments carry negligible duty or substantial charges.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The absolute duty amount per declaration is placed into one of six brackets: zero duty, 0.01–50, 50–200, 200–500, 500–1000, or 1000+ EUR. Each bar shows the count of declarations in that range.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'A large "zero duty" bar may indicate preferential trade agreements (FTA) or duty-exempt goods.',
+          'Many declarations in the 1000+ EUR range may warrant tariff classification review to identify savings.',
+        ],
+      },
+    ],
+  },
+  'weight-dist': {
+    title: 'Weight Distribution',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Doughnut chart showing how many declarations fall into each weight range (in kg). Visualizes the physical scale of imported goods.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Gross weight per declaration is placed into brackets: <1 kg, 1–5, 5–20, 20–100, 100–500, or 500+ kg. Weight values above 500,000 kg (500 tonnes) are excluded as likely data errors. For files with integer-encoded weights (DSV Luftfracht), values are automatically divided by 1,000,000.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Predominantly small weights (<5 kg) indicate express/parcel shipments.',
+          'Larger weights (100+ kg) indicate bulk/freight shipments with different cost structures.',
+        ],
+      },
+    ],
+  },
+  'procedures': {
+    title: 'Procedure Codes',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Bar chart showing the customs procedure codes used across all declarations. The procedure code determines the customs treatment applied to the goods.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'The procedure code field is extracted per row. For DSV, codes may include descriptions (e.g. "4000 — Gleichzeitige...") — only the 4-digit code prefix is used. Not all brokers provide procedure codes.',
+      },
+      {
+        heading: 'Common codes',
+        list: [
+          '4000 — Free circulation with simultaneous re-dispatch (standard permanent import).',
+          '4010 — Free circulation of goods under inward processing (toll manufacturing return).',
+          '5300 — Temporary admission with partial relief from import duty.',
+        ],
+      },
+    ],
+  },
+  'weight-freight': {
+    title: 'Monthly Weight & Freight',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Dual-axis line chart tracking monthly total weight (kg, left axis) and total freight cost (EUR, right axis). Both lines share the same time axis for correlation analysis.',
+      },
+      {
+        heading: 'How it is calculated',
+        list: [
+          'Weight — sum of gross weight values per month.',
+          'Freight — sum of freight cost/transport charges per month. Source varies: DHL col 33, FedEx col 86 (FRACHTKOSTEN), UPS col 47 (anteilige Frachtkosten bis EU-Grenze) or col 20 (Frachtbetrag in Euro), DSV uses DV1Frachtkosten.',
+        ],
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'Correlation between weight and freight — should generally move in the same direction.',
+          'Divergence may indicate rate changes, modal shifts (air vs sea), or consolidation gains.',
+          'This chart may be empty if freight data is not available for the selected broker.',
+        ],
+      },
+    ],
+  },
+  'country-table': {
+    title: 'Country Breakdown Table',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Detailed table of the top 15 countries of origin, showing declaration count, total invoice value, customs duty, and import VAT for each country.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Same data source as the Country of Origin chart, expanded with financial aggregations. Invoice values are summed per country (using invoice value or EUR-converted amount as available). Duty and VAT amounts are summed similarly.',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'High invoice value with low duty may indicate FTA utilization or zero-duty tariff lines.',
+          'Countries with high duty-to-invoice ratios may benefit from tariff engineering or supplier diversification.',
+        ],
+      },
+    ],
+  },
+  'hs-table': {
+    title: 'HS Code Analysis Table',
+    sections: [
+      {
+        heading: 'What it shows',
+        text: 'Detailed table of the top 15 HS code chapters, showing declaration count, total invoice value, total duty, and a sample goods description for each chapter.',
+      },
+      {
+        heading: 'How it is calculated',
+        text: 'Same data source as the HS Chapters chart. The first 2 digits of each HS code determine the chapter. Invoice values and duty amounts are summed per chapter. Up to 3 sample descriptions are collected per chapter (first one shown).',
+      },
+      {
+        heading: 'What to look for',
+        list: [
+          'High-duty chapters may benefit from tariff classification review.',
+          'Sample descriptions help verify that HS codes are correctly assigned to the right product categories.',
+        ],
+      },
+    ],
+  },
+};
